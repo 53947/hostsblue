@@ -17,6 +17,9 @@ PATH = "/opt/nodejs/bin:/home/runner/.cargo/bin:/home/runner/.local/bin:$PATH"
 localPort = 5000
 externalPort = 80
 
+[versionControl]
+enabled = true
+
 [workflows]
 runButton = "run"
 
