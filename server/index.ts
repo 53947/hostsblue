@@ -97,8 +97,12 @@ app.get('/test', (req, res) => {
   res.json({ message: 'Server is working' });
 });
 
-// Serve static files from Vite build output
-const distPath = path.resolve(process.cwd(), 'dist/client');
+// Serve static files from public folder (fallback) or dist (built frontend)
+let distPath = path.resolve(process.cwd(), 'dist/client');
+if (!fs.existsSync(distPath)) {
+  distPath = path.resolve(process.cwd(), 'public');
+  console.log(`[STARTUP] dist/client not found, using public folder instead`);
+}
 console.log(`[STARTUP] Serving static files from: ${distPath}`);
 console.log(`[STARTUP] Directory exists: ${fs.existsSync(distPath)}`);
 console.log(`[STARTUP] index.html exists: ${fs.existsSync(path.join(distPath, 'index.html'))}`);
@@ -108,7 +112,7 @@ app.use(express.static(distPath));
 // SPA fallback: serve index.html for all non-API routes
 app.get('*', (req, res) => {
   const indexPath = path.join(distPath, 'index.html');
-  console.log(`[REQUEST] ${req.method} ${req.path} -> serving ${indexPath}`);
+  console.log(`[REQUEST] ${req.method} ${req.path}`);
   res.sendFile(indexPath, (err) => {
     if (err) console.error(`[ERROR] Failed to serve ${indexPath}:`, err.message);
   });
