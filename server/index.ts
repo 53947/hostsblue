@@ -91,16 +91,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve static files from Vite build output in production
-if (NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../dist/client');
-  app.use(express.static(distPath));
-  
-  // SPA fallback: serve index.html for all non-API routes
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
+// Serve static files from Vite build output (both dev and production)
+const distPath = path.join(__dirname, '../dist/client');
+app.use(express.static(distPath));
+
+// SPA fallback: serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
