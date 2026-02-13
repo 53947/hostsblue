@@ -113,8 +113,15 @@ app.use(express.static(distPath));
 app.get('*', (req, res) => {
   const indexPath = path.join(distPath, 'index.html');
   console.log(`[REQUEST] ${req.method} ${req.path}`);
-  res.sendFile(indexPath, (err) => {
-    if (err) console.error(`[ERROR] Failed to serve ${indexPath}:`, err.message);
+  
+  // Try to send the file, or fallback to plain HTML
+  fs.readFile(indexPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error(`[ERROR] Failed to read ${indexPath}:`, err.message);
+      res.send('<h1>HostsBlue Server Running</h1><p>index.html not found, but server is online.</p>');
+    } else {
+      res.type('html').send(data);
+    }
   });
 });
 
