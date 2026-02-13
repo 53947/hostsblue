@@ -5,7 +5,7 @@ channel = "unstable"
 
 [build]
 target = "build"
-command = "npm run build"
+command = "npm run client:build"
 
 [env]
 PATH = "/opt/nodejs/bin:/home/runner/.cargo/bin:/home/runner/.local/bin:$PATH"
