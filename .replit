@@ -1,34 +1,30 @@
-modules = ["nodejs-20", "postgresql-16"]
+modules = ["nodejs-20"]
 
 [nix]
 channel = "unstable"
 
+[unitTest]
+language = "nodejs"
+
 [build]
 target = "build"
-command = "npm run client:build"
+command = "npm install && npm run build"
 
 [env]
 PATH = "/opt/nodejs/bin:/home/runner/.cargo/bin:/home/runner/.local/bin:$PATH"
-NODE_ENV = "production"
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
-[versionControl]
-enabled = true
+[workflows]
+runButton = "run"
 
-[[workflows]]
-name = "Start application"
-author = "agent"
+[[workflows.workflow.paneButton.clickButton]]
+id = "build"
 
-[workflows.workflow]
-runCommand = "npm start"
+[[workflows.workflow.paneButton.clickButton]]
+id = "run"
 
-[userenv]
-
-[userenv.shared]
-PORT = "5000"
-
-[userenv.development]
-NODE_ENV = "development"
+[workflow]
+run = "npm start"
