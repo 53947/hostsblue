@@ -154,7 +154,7 @@ app.listen(PORT, '0.0.0.0', () => {
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
 ║   🌐 HostsBlue Server                                      ║
-║   White-label Domain & Hosting Platform                    ║
+║   Domain & Hosting Platform                                ║
 ║                                                            ║
 ║   Environment: ${NODE_ENV.padEnd(43)}║
 ║   Port: ${String(PORT).padEnd(50)}║
