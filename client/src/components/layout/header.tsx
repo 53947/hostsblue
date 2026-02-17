@@ -13,7 +13,11 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <img src="/HostsBlue_Logo_text_and_image.png" alt="HostsBlue" className="h-8" />
+            <img src="/HostsBlue_Logo_Image.png" alt="" className="h-8 w-auto" />
+            <span className="text-2xl leading-none">
+              <span style={{ fontFamily: '"Archivo Semi Expanded", sans-serif', fontWeight: 700 }} className="text-[#008060]">hosts</span>
+              <span style={{ fontFamily: '"Archivo Narrow", sans-serif', fontWeight: 700 }} className="text-[#0000FF]">blue</span>
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
