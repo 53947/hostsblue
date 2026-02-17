@@ -3,9 +3,26 @@
  * Handles payment processing via SwipesBlue payment gateway
  */
 
+import crypto from 'crypto';
+
 const SWIPESBLUE_API_URL = process.env.SWIPESBLUE_API_URL || 'https://api.swipesblue.com/v1';
 const SWIPESBLUE_API_KEY = process.env.SWIPESBLUE_API_KEY || '';
 const SWIPESBLUE_WEBHOOK_SECRET = process.env.SWIPESBLUE_WEBHOOK_SECRET || '';
+
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
+
+export class PaymentError extends Error {
+  retryable: boolean;
+  userMessage: string;
+
+  constructor(message: string, retryable: boolean = false, userMessage?: string) {
+    super(message);
+    this.name = 'PaymentError';
+    this.retryable = retryable;
+    this.userMessage = userMessage || 'An error occurred processing your payment. Please try again.';
+  }
+}
 
 interface PaymentSessionData {
   orderId: number;
@@ -25,25 +42,76 @@ interface RefundData {
   reason?: string;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export class SwipesBluePayment {
   private apiUrl: string;
   private apiKey: string;
   private webhookSecret: string;
+  private isMockMode: boolean;
 
   constructor() {
     this.apiUrl = SWIPESBLUE_API_URL;
     this.apiKey = SWIPESBLUE_API_KEY;
     this.webhookSecret = SWIPESBLUE_WEBHOOK_SECRET;
 
-    if (!this.apiKey) {
+    this.isMockMode = !this.apiKey || this.apiKey === 'test' || this.apiKey === 'your_swipesblue_api_key';
+
+    if (this.isMockMode) {
       console.warn('SwipesBlue API key not configured - using mock mode');
     }
   }
 
   /**
+   * Make an API request with retry logic for 5xx/network errors
+   */
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    retries: number = MAX_RETRIES
+  ): Promise<Response> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+
+        // Only retry on 5xx server errors
+        if (response.status >= 500 && attempt < retries) {
+          console.warn(
+            `[SwipesBlue] Server error ${response.status}, retrying (attempt ${attempt + 1}/${retries})...`
+          );
+          await delay(RETRY_DELAYS[attempt]);
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        // Retry on network errors
+        if (attempt < retries) {
+          console.warn(
+            `[SwipesBlue] Network error, retrying (attempt ${attempt + 1}/${retries}):`,
+            (error as Error).message
+          );
+          await delay(RETRY_DELAYS[attempt]);
+          continue;
+        }
+        throw new PaymentError(
+          `Network error after ${retries} retries: ${(error as Error).message}`,
+          true,
+          'Unable to connect to payment provider. Please try again later.'
+        );
+      }
+    }
+
+    // Should not reach here, but TypeScript needs this
+    throw new PaymentError('Max retries exceeded', true);
+  }
+
+  /**
    * Create a payment session/checkout
    */
-  async createPaymentSession(data: PaymentSessionData): Promise<string> {
+  async createPaymentSession(data: PaymentSessionData, idempotencyKey?: string): Promise<string> {
     const payload = {
       amount: data.amount,
       currency: data.currency.toLowerCase(),
@@ -61,41 +129,48 @@ export class SwipesBluePayment {
       webhook_url: data.webhookUrl,
     };
 
-    try {
-      // Mock mode for development
-      if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
-        console.log('[SwipesBlue Mock] Creating payment session:', payload);
-        // Return a mock checkout URL
-        return `${process.env.CLIENT_URL}/checkout/mock?order=${data.orderNumber}&mock=true`;
-      }
-
-      const response = await fetch(`${this.apiUrl}/checkout/sessions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`SwipesBlue API error: ${error}`);
-      }
-
-      const result = await response.json();
-      return result.checkout_url;
-    } catch (error) {
-      console.error('Failed to create payment session:', error);
-      throw error;
+    // Mock mode for development
+    if (this.isMockMode) {
+      console.log('[SwipesBlue Mock] Creating payment session:', payload);
+      return `${process.env.CLIENT_URL}/checkout/mock?order=${data.orderNumber}&mock=true`;
     }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/checkout/sessions`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new PaymentError(
+        `SwipesBlue API error (${response.status}): ${errorText}`,
+        response.status >= 500,
+        'Payment session creation failed. Please try again.'
+      );
+    }
+
+    const result = await response.json();
+    return result.checkout_url;
   }
 
   /**
    * Get payment status
    */
   async getPaymentStatus(paymentId: string): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: paymentId,
         status: 'completed',
@@ -105,14 +180,20 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(`${this.apiUrl}/payments/${paymentId}`, {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-    });
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/payments/${paymentId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Failed to get payment status: ${response.statusText}`);
+      throw new PaymentError(
+        `Failed to get payment status: ${response.statusText}`,
+        response.status >= 500
+      );
     }
 
     return await response.json();
@@ -122,7 +203,7 @@ export class SwipesBluePayment {
    * Process a refund
    */
   async processRefund(data: RefundData): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: `refund-${Date.now()}`,
         payment_id: data.paymentId,
@@ -133,21 +214,28 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(`${this.apiUrl}/refunds`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        payment_id: data.paymentId,
-        amount: data.amount,
-        reason: data.reason,
-      }),
-    });
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/refunds`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payment_id: data.paymentId,
+          amount: data.amount,
+          reason: data.reason,
+        }),
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Refund failed: ${response.statusText}`);
+      throw new PaymentError(
+        `Refund failed: ${response.statusText}`,
+        response.status >= 500,
+        'Unable to process refund. Please contact support.'
+      );
     }
 
     return await response.json();
@@ -163,10 +251,6 @@ export class SwipesBluePayment {
     }
 
     try {
-      // Implement signature verification based on SwipesBlue's scheme
-      // Usually HMAC-SHA256 of the payload using webhook secret
-      const crypto = require('crypto');
-      
       const expectedSignature = crypto
         .createHmac('sha256', this.webhookSecret)
         .update(JSON.stringify(payload))
@@ -191,7 +275,7 @@ export class SwipesBluePayment {
     name?: string;
     metadata?: Record<string, any>;
   }): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: `cus-${Date.now()}`,
         email: data.email,
@@ -200,17 +284,23 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(`${this.apiUrl}/customers`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/customers`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Failed to create customer: ${response.statusText}`);
+      throw new PaymentError(
+        `Failed to create customer: ${response.statusText}`,
+        response.status >= 500
+      );
     }
 
     return await response.json();
@@ -223,7 +313,7 @@ export class SwipesBluePayment {
     customerId: string,
     paymentMethodId: string
   ): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: paymentMethodId,
         customer: customerId,
@@ -231,7 +321,7 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(
+    const response = await this.fetchWithRetry(
       `${this.apiUrl}/customers/${customerId}/payment_methods`,
       {
         method: 'POST',
@@ -246,7 +336,10 @@ export class SwipesBluePayment {
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to attach payment method: ${response.statusText}`);
+      throw new PaymentError(
+        `Failed to attach payment method: ${response.statusText}`,
+        response.status >= 500
+      );
     }
 
     return await response.json();
@@ -263,7 +356,7 @@ export class SwipesBluePayment {
     }>;
     metadata?: Record<string, any>;
   }): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: `sub-${Date.now()}`,
         customer: data.customerId,
@@ -273,24 +366,30 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(`${this.apiUrl}/subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customer: data.customerId,
-        items: data.items.map(item => ({
-          price: item.priceId,
-          quantity: item.quantity || 1,
-        })),
-        metadata: data.metadata,
-      }),
-    });
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/subscriptions`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer: data.customerId,
+          items: data.items.map(item => ({
+            price: item.priceId,
+            quantity: item.quantity || 1,
+          })),
+          metadata: data.metadata,
+        }),
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Failed to create subscription: ${response.statusText}`);
+      throw new PaymentError(
+        `Failed to create subscription: ${response.statusText}`,
+        response.status >= 500
+      );
     }
 
     return await response.json();
@@ -303,7 +402,7 @@ export class SwipesBluePayment {
     subscriptionId: string,
     atPeriodEnd: boolean = true
   ): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: subscriptionId,
         status: atPeriodEnd ? 'active' : 'cancelled',
@@ -311,7 +410,7 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(
+    const response = await this.fetchWithRetry(
       `${this.apiUrl}/subscriptions/${subscriptionId}`,
       {
         method: 'DELETE',
@@ -326,7 +425,10 @@ export class SwipesBluePayment {
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to cancel subscription: ${response.statusText}`);
+      throw new PaymentError(
+        `Failed to cancel subscription: ${response.statusText}`,
+        response.status >= 500
+      );
     }
 
     return await response.json();
@@ -336,7 +438,7 @@ export class SwipesBluePayment {
    * Get invoice for order
    */
   async getInvoice(invoiceId: string): Promise<any> {
-    if (!this.apiKey || this.apiKey === 'your_swipesblue_api_key') {
+    if (this.isMockMode) {
       return {
         id: invoiceId,
         amount_due: 0,
@@ -346,14 +448,20 @@ export class SwipesBluePayment {
       };
     }
 
-    const response = await fetch(`${this.apiUrl}/invoices/${invoiceId}`, {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-    });
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/invoices/${invoiceId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Failed to get invoice: ${response.statusText}`);
+      throw new PaymentError(
+        `Failed to get invoice: ${response.statusText}`,
+        response.status >= 500
+      );
     }
 
     return await response.json();

@@ -1,13 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { JWKS } from 'jwks-rsa';
-
-// In-memory cache for tokens (use Redis in production)
-const tokenCache = new Map<string, any>();
 
 export interface JWTPayload {
   userId: number;
   email: string;
+  isAdmin?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -21,17 +18,32 @@ declare global {
   }
 }
 
+// LRU-bounded cache (max 10000 entries) instead of unbounded Map
+const MAX_CACHE_SIZE = 10000;
+const tokenCache = new Map<string, { payload: JWTPayload; exp: number }>();
+
+// Token blacklist for logout support
+const tokenBlacklist = new Set<string>();
+
+function evictOldest() {
+  if (tokenCache.size >= MAX_CACHE_SIZE) {
+    // Delete the first (oldest) entry
+    const firstKey = tokenCache.keys().next().value;
+    if (firstKey) {
+      tokenCache.delete(firstKey);
+    }
+  }
+}
+
 // Load keys from environment or files
 let privateKey: string;
 let publicKey: string;
 
 try {
-  // In production, load from secure file storage
   if (process.env.JWT_PRIVATE_KEY && process.env.JWT_PUBLIC_KEY) {
     privateKey = process.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
     publicKey = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
   } else {
-    // Development fallback - generate or use static keys
     console.warn('JWT keys not configured, using development fallback');
     privateKey = 'dev-private-key';
     publicKey = 'dev-private-key';
@@ -91,6 +103,14 @@ export function verifyToken(token: string): JWTPayload {
 }
 
 /**
+ * Blacklist a token (for logout support)
+ */
+export function blacklistToken(token: string): void {
+  tokenBlacklist.add(token);
+  tokenCache.delete(token);
+}
+
+/**
  * Express middleware to authenticate JWT token
  */
 export function authenticateToken(
@@ -98,14 +118,27 @@ export function authenticateToken(
   res: Response,
   next: NextFunction
 ): void {
+  // Read token from cookie first, fallback to Authorization header
+  const cookieToken = req.cookies?.accessToken;
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const headerToken = authHeader && authHeader.split(' ')[1];
+  const token = cookieToken || headerToken;
 
   if (!token) {
     res.status(401).json({
       success: false,
       error: 'Access token required',
       code: 'TOKEN_MISSING',
+    });
+    return;
+  }
+
+  // Check blacklist
+  if (tokenBlacklist.has(token)) {
+    res.status(403).json({
+      success: false,
+      error: 'Token has been revoked',
+      code: 'TOKEN_REVOKED',
     });
     return;
   }
@@ -120,11 +153,12 @@ export function authenticateToken(
     }
 
     const decoded = verifyToken(token);
-    
-    // Cache the decoded token
+
+    // Cache the decoded token (with LRU eviction)
+    evictOldest();
     tokenCache.set(token, {
       payload: decoded,
-      exp: decoded.exp,
+      exp: decoded.exp!,
     });
 
     req.user = decoded;
@@ -174,18 +208,24 @@ export function requireAdmin(
     return;
   }
 
-  // Check admin status from database (cache this in token in production)
-  // For now, we'll check the isAdmin flag that should be added to token
-  // This is a simplified version - implement proper admin check
-  
+  if (req.user.isAdmin !== true) {
+    res.status(403).json({
+      success: false,
+      error: 'Admin access required',
+      code: 'ADMIN_REQUIRED',
+    });
+    return;
+  }
+
   next();
 }
 
 /**
- * Clear token cache (useful for logout)
+ * Clear token from cache (useful for logout)
  */
 export function invalidateToken(token: string): void {
   tokenCache.delete(token);
+  tokenBlacklist.add(token);
 }
 
 /**

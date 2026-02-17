@@ -9,178 +9,127 @@ export interface ApiResponse<T> {
 }
 
 class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code?: string
-  ) {
+  constructor(message: string, public status: number, public code?: string) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-async function fetchApi<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_URL}/api/v1${endpoint}`;
-  
-  const token = localStorage.getItem('accessToken');
-  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
+  const response = await fetch(url, { ...options, headers, credentials: 'include' });
   const data = await response.json();
 
   if (!response.ok) {
     if (response.status === 401) {
-      // Token expired, try to refresh
-      const refreshed = await refreshToken();
-      if (refreshed) {
-        // Retry the original request
-        return fetchApi(endpoint, options);
-      } else {
-        // Refresh failed, logout
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+      if (!isRefreshing) {
+        isRefreshing = true;
+        refreshPromise = refreshToken();
       }
+      const refreshed = await refreshPromise;
+      isRefreshing = false;
+      refreshPromise = null;
+      if (refreshed) return fetchApi(endpoint, options);
+      window.location.href = '/login';
     }
-    
-    throw new ApiError(
-      data.error || 'An error occurred',
-      response.status,
-      data.code
-    );
+    throw new ApiError(data.error || 'An error occurred', response.status, data.code);
   }
-
   return data.data;
 }
 
 async function refreshToken(): Promise<boolean> {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return false;
-
   try {
     const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
     });
-
-    if (response.ok) {
-      const data = await response.json();
-      localStorage.setItem('accessToken', data.data.tokens.accessToken);
-      localStorage.setItem('refreshToken', data.data.tokens.refreshToken);
-      return true;
-    }
-  } catch (error) {
-    console.error('Token refresh failed:', error);
+    return response.ok;
+  } catch {
+    return false;
   }
-
-  return false;
 }
 
-// Auth API
 export const authApi = {
   login: (email: string, password: string) =>
-    fetchApi<{ customer: any; tokens: { accessToken: string; refreshToken: string } }>(
-      '/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      }
-    ),
-
+    fetchApi<{ customer: any }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (data: { email: string; password: string; firstName: string; lastName: string }) =>
-    fetchApi<{ customer: any; tokens: { accessToken: string; refreshToken: string } }>(
-      '/auth/register',
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    ),
-
+    fetchApi<{ customer: any }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => fetchApi<void>('/auth/logout', { method: 'POST' }),
   me: () => fetchApi<any>('/auth/me'),
+  forgotPassword: (email: string) =>
+    fetchApi<void>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    fetchApi<void>('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
+  updateProfile: (data: any) =>
+    fetchApi<any>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    fetchApi<void>('/auth/password', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
-// Domain API
 export const domainApi = {
-  search: (domain: string) =>
-    fetchApi<{ query: string; results: Array<{ domain: string; available: boolean; price: number; tld: string }> }>(
-      `/domains/search?domain=${encodeURIComponent(domain)}`
-    ),
-
-  getTlds: () =>
-    fetchApi<Array<{ tld: string; registrationPrice: number; supportsPrivacy: boolean }>>(
-      '/domains/tlds'
-    ),
-
-  getDomains: () =>
-    fetchApi<any[]>('/domains'),
-
-  getDomain: (uuid: string) =>
-    fetchApi<any>(`/domains/${uuid}`),
-
-  updateDomain: (uuid: string, data: any) =>
-    fetchApi<any>(`/domains/${uuid}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
+  search: (domain: string) => fetchApi<any>(`/domains/search?domain=${encodeURIComponent(domain)}`),
+  getTlds: () => fetchApi<any[]>('/domains/tlds'),
+  getDomains: () => fetchApi<any[]>('/domains'),
+  getDomain: (uuid: string) => fetchApi<any>(`/domains/${uuid}`),
+  updateDomain: (uuid: string, data: any) => fetchApi<any>(`/domains/${uuid}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
-// Hosting API
 export const hostingApi = {
-  getPlans: () =>
-    fetchApi<any[]>('/hosting/plans'),
-
-  getAccounts: () =>
-    fetchApi<any[]>('/hosting/accounts'),
-
-  getAccount: (uuid: string) =>
-    fetchApi<any>(`/hosting/accounts/${uuid}`),
+  getPlans: () => fetchApi<any[]>('/hosting/plans'),
+  getAccounts: () => fetchApi<any[]>('/hosting/accounts'),
+  getAccount: (uuid: string) => fetchApi<any>(`/hosting/accounts/${uuid}`),
 };
 
-// Order API
 export const orderApi = {
-  createOrder: (data: { items: any[]; couponCode?: string }) =>
-    fetchApi<{ order: any }>('/orders', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  getOrders: () =>
-    fetchApi<any[]>('/orders'),
-
-  getOrder: (uuid: string) =>
-    fetchApi<any>(`/orders/${uuid}`),
-
-  checkout: (uuid: string) =>
-    fetchApi<{ paymentUrl: string }>(`/orders/${uuid}/checkout`, {
-      method: 'POST',
-    }),
+  createOrder: (data: any) => fetchApi<{ order: any }>('/orders', { method: 'POST', body: JSON.stringify(data) }),
+  getOrders: () => fetchApi<any[]>('/orders'),
+  getOrder: (uuid: string) => fetchApi<any>(`/orders/${uuid}`),
+  checkout: (uuid: string) => fetchApi<{ paymentUrl: string }>(`/orders/${uuid}/checkout`, { method: 'POST' }),
 };
 
-// Dashboard API
 export const dashboardApi = {
-  getStats: () =>
-    fetchApi<{
-      domains: { total: number; expiringSoon: any[] };
-      hosting: { total: number };
-      recentOrders: any[];
-    }>('/dashboard/stats'),
+  getStats: () => fetchApi<any>('/dashboard/stats'),
+};
+
+export const emailApi = {
+  getPlans: () => fetchApi<any[]>('/email/plans'),
+  getAccounts: () => fetchApi<any[]>('/email/accounts'),
+  createAccount: (data: any) => fetchApi<any>('/email/accounts', { method: 'POST', body: JSON.stringify(data) }),
+  deleteAccount: (id: number) => fetchApi<void>(`/email/accounts/${id}`, { method: 'DELETE' }),
+};
+
+export const sslApi = {
+  getCertificates: () => fetchApi<any[]>('/ssl/certificates'),
+  createCertificate: (data: any) => fetchApi<any>('/ssl/certificates', { method: 'POST', body: JSON.stringify(data) }),
+  renewCertificate: (id: number) => fetchApi<any>(`/ssl/certificates/${id}/renew`, { method: 'POST' }),
+};
+
+export const sitelockApi = {
+  getAccounts: () => fetchApi<any[]>('/sitelock/accounts'),
+  triggerScan: (id: number) => fetchApi<any>(`/sitelock/accounts/${id}/scan`, { method: 'POST' }),
+};
+
+export const websiteBuilderApi = {
+  getProjects: () => fetchApi<any[]>('/website-builder/projects'),
+  createProject: (data: any) => fetchApi<any>('/website-builder/projects', { method: 'POST', body: JSON.stringify(data) }),
+  publishProject: (id: number) => fetchApi<any>(`/website-builder/projects/${id}/publish`, { method: 'POST' }),
+};
+
+export const supportApi = {
+  getTickets: () => fetchApi<any[]>('/support/tickets'),
+  getTicket: (uuid: string) => fetchApi<any>(`/support/tickets/${uuid}`),
+  createTicket: (data: any) => fetchApi<any>('/support/tickets', { method: 'POST', body: JSON.stringify(data) }),
+  addMessage: (ticketUuid: string, body: string) =>
+    fetchApi<any>(`/support/tickets/${ticketUuid}/messages`, { method: 'POST', body: JSON.stringify({ body }) }),
 };
 
 export { ApiError };

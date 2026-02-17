@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import ConnectPgSimple from 'connect-pg-simple';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -12,7 +13,7 @@ import { registerRoutes } from './routes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Database connection
@@ -28,6 +29,7 @@ const app = express();
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // Session configuration
 const PgSession = ConnectPgSimple(session);
@@ -51,11 +53,16 @@ app.use(
 
 // CORS configuration
 app.use((req, res, next) => {
-  const allowedOrigins = [
-    process.env.CLIENT_URL || 'http://localhost:5173',
-    'https://hostsblue.com',
-    'https://www.hostsblue.com',
-  ];
+  const envOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : [];
+  const allowedOrigins = envOrigins.length > 0
+    ? envOrigins
+    : [
+        process.env.CLIENT_URL || 'http://localhost:5173',
+        'https://hostsblue.com',
+        'https://www.hostsblue.com',
+      ];
   const origin = req.headers.origin;
   
   if (origin && allowedOrigins.includes(origin)) {

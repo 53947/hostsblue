@@ -3,9 +3,30 @@
  * Handles domain registration, transfers, and management via OpenSRS API
  */
 
+import crypto from 'crypto';
+
 const OPENRS_API_URL = process.env.OPENRS_API_URL || 'https://admin.test.hostedemail.com/api';
 const OPENRS_API_KEY = process.env.OPENRS_API_KEY || '';
 const OPENRS_USERNAME = process.env.OPENRS_USERNAME || '';
+
+// Config-driven nameservers from environment
+const DEFAULT_NS1 = process.env.HOSTSBLUE_NS1 || 'ns1.hostsblue.com';
+const DEFAULT_NS2 = process.env.HOSTSBLUE_NS2 || 'ns2.hostsblue.com';
+const DEFAULT_NAMESERVERS = [DEFAULT_NS1, DEFAULT_NS2];
+
+export class OpenSRSError extends Error {
+  code: string;
+  retryable: boolean;
+  details?: any;
+
+  constructor(message: string, code: string, retryable: boolean = false, details?: any) {
+    super(message);
+    this.name = 'OpenSRSError';
+    this.code = code;
+    this.retryable = retryable;
+    this.details = details;
+  }
+}
 
 interface DomainAvailabilityResult {
   domain: string;
@@ -48,13 +69,17 @@ export class OpenSRSIntegration {
   private apiUrl: string;
   private apiKey: string;
   private username: string;
+  private isMockMode: boolean;
 
   constructor() {
     this.apiUrl = OPENRS_API_URL;
     this.apiKey = OPENRS_API_KEY;
     this.username = OPENRS_USERNAME;
 
-    if (!this.apiKey || !this.username) {
+    // Mock mode ONLY when API key is empty or 'test'
+    this.isMockMode = !this.apiKey || this.apiKey === 'test' || this.apiKey === 'your_opensrs_api_key';
+
+    if (this.isMockMode) {
       console.warn('OpenSRS credentials not configured - using mock mode');
     }
   }
@@ -66,9 +91,11 @@ export class OpenSRSIntegration {
     action: string,
     params: Record<string, any> = {}
   ): Promise<any> {
-    // In production, implement proper OpenSRS authentication
-    // This uses the OpenSRS XML/JSON API with signature-based auth
-    
+    // Mock mode for development
+    if (this.isMockMode) {
+      return this.mockResponse(action, params);
+    }
+
     const payload = {
       action,
       credentials: {
@@ -78,45 +105,75 @@ export class OpenSRSIntegration {
       ...params,
     };
 
-    try {
-      // Mock mode for development
-      if (!this.apiKey || this.apiKey === 'your_opensrs_api_key') {
-        return this.mockResponse(action, params);
-      }
+    const signature = this.generateSignature(JSON.stringify(payload));
 
+    // Request timeout via AbortController (10s)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
       const response = await fetch(`${this.apiUrl}/domains`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-OpenSRS-Username': this.username,
-          'X-OpenSRS-Signature': this.generateSignature(action, params),
+          'X-OpenSRS-Signature': signature,
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`OpenSRS API error: ${error}`);
+        const errorText = await response.text();
+        const retryable = response.status >= 500;
+        throw new OpenSRSError(
+          `OpenSRS API error (${response.status}): ${errorText}`,
+          `OPENSRS_HTTP_${response.status}`,
+          retryable,
+          { status: response.status, body: errorText }
+        );
       }
 
       return await response.json();
     } catch (error) {
-      console.error('OpenSRS API request failed:', error);
-      throw error;
+      if (error instanceof OpenSRSError) {
+        throw error;
+      }
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new OpenSRSError(
+          'OpenSRS API request timed out',
+          'OPENSRS_TIMEOUT',
+          true
+        );
+      }
+      throw new OpenSRSError(
+        `OpenSRS API request failed: ${(error as Error).message}`,
+        'OPENSRS_NETWORK_ERROR',
+        true,
+        { originalError: (error as Error).message }
+      );
     }
   }
 
   /**
-   * Generate API signature for OpenSRS authentication
+   * Generate HMAC-SHA256 API signature for OpenSRS authentication
    */
-  private generateSignature(action: string, params: any): string {
-    // OpenSRS uses a signature-based auth
-    // Implement according to OpenSRS documentation
-    const timestamp = Math.floor(Date.now() / 1000);
-    const signature = `${this.username}:${this.apiKey}:${action}:${timestamp}`;
-    
-    // In production, use proper HMAC-SHA256
-    return `mock-signature-${timestamp}`;
+  private generateSignature(data: string): string {
+    // First pass: HMAC-SHA256 of the data with the API key
+    const firstPass = crypto
+      .createHmac('sha256', this.apiKey)
+      .update(data)
+      .digest('hex');
+
+    // Second pass: HMAC-SHA256 of the first pass with the API key
+    const secondPass = crypto
+      .createHmac('sha256', this.apiKey)
+      .update(firstPass)
+      .digest('hex');
+
+    return secondPass;
   }
 
   /**
@@ -128,40 +185,29 @@ export class OpenSRSIntegration {
   ): Promise<DomainAvailabilityResult[]> {
     const results: DomainAvailabilityResult[] = [];
 
-    try {
-      // Clean domain (remove protocol, www, etc)
-      const cleanDomain = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('.')[0];
+    // Clean domain (remove protocol, www, etc)
+    const cleanDomain = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('.')[0];
 
-      // If no TLDs provided, default to .com
-      const searchTlds = tlds.length > 0 ? tlds : ['.com'];
+    // If no TLDs provided, default to .com
+    const searchTlds = tlds.length > 0 ? tlds : ['.com'];
 
-      const response = await this.apiRequest('lookup', {
-        domains: searchTlds.map(tld => `${cleanDomain}${tld}`),
-      });
+    const response = await this.apiRequest('lookup', {
+      domains: searchTlds.map(tld => `${cleanDomain}${tld}`),
+    });
 
-      if (response.results) {
-        for (const result of response.results) {
-          results.push({
-            domain: result.domain,
-            tld: result.tld,
-            available: result.available,
-            premium: result.premium || false,
-            reason: result.reason,
-          });
-        }
+    if (response.results) {
+      for (const result of response.results) {
+        results.push({
+          domain: result.domain,
+          tld: result.tld,
+          available: result.available,
+          premium: result.premium || false,
+          reason: result.reason,
+        });
       }
-
-      return results;
-    } catch (error) {
-      console.error('Domain availability check failed:', error);
-      
-      // Return mock results in development
-      return searchTlds.map(tld => ({
-        domain: `${domain}${tld}`,
-        tld,
-        available: Math.random() > 0.5, // Random for mock
-      }));
     }
+
+    return results;
   }
 
   /**
@@ -172,10 +218,7 @@ export class OpenSRSIntegration {
       domain: data.domain,
       period: data.period,
       contacts: data.contacts,
-      nameservers: data.nameservers || [
-        'ns1.hostsblue.com',
-        'ns2.hostsblue.com',
-      ],
+      nameservers: data.nameservers || DEFAULT_NAMESERVERS,
       privacy: data.privacy || false,
     };
 
@@ -378,7 +421,7 @@ export class OpenSRSIntegration {
         domain: params.domain,
         status: 'active',
         expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        nameservers: ['ns1.hostsblue.com', 'ns2.hostsblue.com'],
+        nameservers: DEFAULT_NAMESERVERS,
         privacy_enabled: false,
         transfer_lock: true,
       },
@@ -387,7 +430,7 @@ export class OpenSRSIntegration {
         nameservers: params.nameservers,
       },
       get_epp: {
-        epp_code: `MOCK-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        epp_code: `MOCK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
       },
     };
 

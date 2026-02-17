@@ -11,16 +11,25 @@ export default {
       },
       colors: {
         hostsblue: {
-          purple: '#A855F7',
-          blue: '#0000FF',
-          green: '#84D71A',
-          dark: '#0a0a0a',
-          card: '#141414',
+          'blue-deep': '#1844A6',
+          'blue-pure': '#0000FF',
+          'green': '#008060',
+          'teal': '#064A6C',
+        },
+        status: {
+          success: '#16A34A',
+          warning: '#D97706',
+          error: '#DC2626',
+          info: '#2563EB',
         },
       },
+      borderRadius: {
+        button: '7px',
+      },
       boxShadow: {
-        'glow-purple': '0 0 20px rgba(168, 85, 247, 0.3)',
-        'glow-blue': '0 0 20px rgba(0, 0, 255, 0.3)',
+        'card': '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03)',
+        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08)',
+        'button': '0 1px 2px rgba(0, 0, 0, 0.05)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',

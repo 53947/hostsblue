@@ -12,7 +12,7 @@ export function OrdersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#1844A6] animate-spin" />
       </div>
     );
   }
@@ -37,39 +37,39 @@ export function OrdersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Orders</h1>
-          <p className="text-zinc-400">View your order history</p>
+          <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
+          <p className="text-gray-500">View your order history</p>
         </div>
       </div>
 
       {/* Orders List */}
       {orders && orders.length > 0 ? (
-        <div className="card overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-[7px] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left border-b border-zinc-800">
-                  <th className="pb-4 pt-2 px-6 font-medium text-zinc-400">Order #</th>
-                  <th className="pb-4 pt-2 px-6 font-medium text-zinc-400">Date</th>
-                  <th className="pb-4 pt-2 px-6 font-medium text-zinc-400">Items</th>
-                  <th className="pb-4 pt-2 px-6 font-medium text-zinc-400">Total</th>
-                  <th className="pb-4 pt-2 px-6 font-medium text-zinc-400">Status</th>
-                  <th className="pb-4 pt-2 px-6 font-medium text-zinc-400"></th>
+                <tr className="text-left border-b border-gray-200">
+                  <th className="pb-4 pt-4 px-6 font-medium text-gray-500">Order #</th>
+                  <th className="pb-4 pt-4 px-6 font-medium text-gray-500">Date</th>
+                  <th className="pb-4 pt-4 px-6 font-medium text-gray-500">Items</th>
+                  <th className="pb-4 pt-4 px-6 font-medium text-gray-500">Total</th>
+                  <th className="pb-4 pt-4 px-6 font-medium text-gray-500">Status</th>
+                  <th className="pb-4 pt-4 px-6 font-medium text-gray-500"></th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order: any) => (
-                  <tr key={order.id} className="border-b border-zinc-800/50 last:border-0">
+                  <tr key={order.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-4 px-6">
-                      <span className="text-white font-mono">{order.orderNumber}</span>
+                      <span className="text-gray-900 font-mono">{order.orderNumber}</span>
                     </td>
-                    <td className="py-4 px-6 text-zinc-400">
+                    <td className="py-4 px-6 text-gray-500">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-4 px-6 text-zinc-400">
+                    <td className="py-4 px-6 text-gray-500">
                       {order.items?.length || 0} items
                     </td>
-                    <td className="py-4 px-6 text-white">
+                    <td className="py-4 px-6 text-gray-900">
                       ${(order.total / 100).toFixed(2)}
                     </td>
                     <td className="py-4 px-6">
@@ -78,7 +78,7 @@ export function OrdersPage() {
                     <td className="py-4 px-6">
                       <Link
                         to={`/dashboard/orders/${order.uuid}`}
-                        className="text-purple-400 hover:text-purple-300 flex items-center gap-1 text-sm"
+                        className="text-[#1844A6] hover:text-[#133A8A] flex items-center gap-1 text-sm"
                       >
                         View
                         <ExternalLink className="w-3 h-3" />
@@ -91,10 +91,10 @@ export function OrdersPage() {
           </div>
         </div>
       ) : (
-        <div className="card text-center py-16">
-          <ShoppingCart className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No orders yet</h3>
-          <p className="text-zinc-400 mb-6">Your order history will appear here</p>
+        <div className="bg-white border border-gray-200 rounded-[7px] text-center py-16 px-6">
+          <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+          <p className="text-gray-500 mb-6">Your order history will appear here</p>
           <Link to="/domains/search" className="btn-primary">
             Start Shopping
           </Link>

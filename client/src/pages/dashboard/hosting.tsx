@@ -12,7 +12,7 @@ export function HostingPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#1844A6] animate-spin" />
       </div>
     );
   }
@@ -22,8 +22,8 @@ export function HostingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Hosting</h1>
-          <p className="text-zinc-400">Manage your WordPress hosting accounts</p>
+          <h1 className="text-2xl font-bold text-gray-900">My Hosting</h1>
+          <p className="text-gray-500">Manage your WordPress hosting accounts</p>
         </div>
         <Link to="/hosting" className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" />
@@ -35,14 +35,14 @@ export function HostingPage() {
       {accounts && accounts.length > 0 ? (
         <div className="grid gap-4">
           {accounts.map((account: any) => (
-            <div key={account.id} className="card card-hover flex items-center justify-between">
+            <div key={account.id} className="bg-white border border-gray-200 rounded-[7px] p-6 hover:shadow-md transition-shadow flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                  <Server className="w-5 h-5 text-blue-400" />
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Server className="w-5 h-5 text-[#1844A6]" />
                 </div>
                 <div>
-                  <h3 className="text-white font-medium">{account.siteName}</h3>
-                  <div className="flex items-center gap-3 text-sm text-zinc-400">
+                  <h3 className="text-gray-900 font-medium">{account.siteName}</h3>
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
                     <span className={`badge badge-${
                       account.status === 'active' ? 'success' :
                       account.status === 'provisioning' ? 'warning' :
@@ -53,7 +53,7 @@ export function HostingPage() {
                     {account.primaryDomain && (
                       <span>{account.primaryDomain}</span>
                     )}
-                    <span className="text-purple-400">{account.plan?.name}</span>
+                    <span className="text-[#1844A6]">{account.plan?.name}</span>
                   </div>
                 </div>
               </div>
@@ -63,7 +63,7 @@ export function HostingPage() {
                     href={`https://${account.primaryDomain}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 text-zinc-400 hover:text-white transition-colors"
+                    className="p-2 text-gray-400 hover:text-gray-900 transition-colors"
                     title="Visit site"
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -71,7 +71,7 @@ export function HostingPage() {
                 )}
                 <Link
                   to={`/dashboard/hosting/${account.uuid}`}
-                  className="p-2 text-zinc-400 hover:text-white transition-colors"
+                  className="p-2 text-gray-400 hover:text-gray-900 transition-colors"
                   title="Manage"
                 >
                   <Settings className="w-4 h-4" />
@@ -81,10 +81,10 @@ export function HostingPage() {
           ))}
         </div>
       ) : (
-        <div className="card text-center py-16">
-          <Server className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No hosting accounts yet</h3>
-          <p className="text-zinc-400 mb-6">Set up your first WordPress site</p>
+        <div className="bg-white border border-gray-200 rounded-[7px] text-center py-16 px-6">
+          <Server className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No hosting accounts yet</h3>
+          <p className="text-gray-500 mb-6">Set up your first WordPress site</p>
           <Link to="/hosting" className="btn-primary">
             View Hosting Plans
           </Link>

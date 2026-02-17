@@ -69,6 +69,9 @@ export const orderItemTypeEnum = pgEnum('order_item_type', [
   'hosting_addon',
   'privacy_protection',
   'email_service',
+  'ssl_certificate',
+  'sitelock',
+  'website_builder',
 ]);
 
 export const tldCategoryEnum = pgEnum('tld_category', [
@@ -111,6 +114,10 @@ export const customers = pgTable('customers', {
   isAdmin: boolean('is_admin').default(false).notNull(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   
+  // Password reset
+  resetToken: varchar('reset_token', { length: 255 }),
+  resetTokenExpiresAt: timestamp('reset_token_expires_at'),
+
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -250,10 +257,10 @@ export const domains = pgTable('domains', {
   privacyExpiryDate: timestamp('privacy_expiry_date'),
   
   // Contact references
-  ownerContactId: integer('owner_contact_id').references(() => domainContacts.id),
-  adminContactId: integer('admin_contact_id').references(() => domainContacts.id),
-  techContactId: integer('tech_contact_id').references(() => domainContacts.id),
-  billingContactId: integer('billing_contact_id').references(() => domainContacts.id),
+  ownerContactId: integer('owner_contact_id').references(() => domainContacts.id, { onDelete: 'set null' }),
+  adminContactId: integer('admin_contact_id').references(() => domainContacts.id, { onDelete: 'set null' }),
+  techContactId: integer('tech_contact_id').references(() => domainContacts.id, { onDelete: 'set null' }),
+  billingContactId: integer('billing_contact_id').references(() => domainContacts.id, { onDelete: 'set null' }),
   
   // Nameservers
   nameservers: jsonb('nameservers').default([]),
@@ -299,6 +306,22 @@ export const domainsRelations = relations(domains, ({ one, many }) => ({
   ownerContact: one(domainContacts, {
     fields: [domains.ownerContactId],
     references: [domainContacts.id],
+    relationName: 'ownerContact',
+  }),
+  adminContact: one(domainContacts, {
+    fields: [domains.adminContactId],
+    references: [domainContacts.id],
+    relationName: 'adminContact',
+  }),
+  techContact: one(domainContacts, {
+    fields: [domains.techContactId],
+    references: [domainContacts.id],
+    relationName: 'techContact',
+  }),
+  billingContact: one(domainContacts, {
+    fields: [domains.billingContactId],
+    references: [domainContacts.id],
+    relationName: 'billingContact',
   }),
   orderItems: many(orderItems),
   dnsRecords: many(dnsRecords),
@@ -756,6 +779,218 @@ export const cartSessions = pgTable('cart_sessions', {
 }));
 
 // ============================================================================
+// EMAIL PLANS
+// ============================================================================
+
+export const emailPlans = pgTable('email_plans', {
+  id: serial('id').primaryKey(),
+  slug: varchar('slug', { length: 50 }).notNull().unique(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description'),
+  monthlyPrice: integer('monthly_price').notNull(),
+  yearlyPrice: integer('yearly_price').notNull(),
+  storageGB: integer('storage_gb').notNull(),
+  maxAccounts: integer('max_accounts').default(1),
+  features: jsonb('features').default({}).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const emailPlansRelations = relations(emailPlans, ({ many }) => ({
+  accounts: many(emailAccounts),
+}));
+
+// ============================================================================
+// EMAIL ACCOUNTS
+// ============================================================================
+
+export const emailAccounts = pgTable('email_accounts', {
+  id: serial('id').primaryKey(),
+  uuid: pgUuid('uuid').defaultRandom().notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  planId: integer('plan_id').references(() => emailPlans.id).notNull(),
+  domainId: integer('domain_id').references(() => domains.id),
+  email: varchar('email', { length: 255 }).notNull(),
+  status: varchar('status', { length: 20 }).default('active').notNull(),
+  storageUsedMB: integer('storage_used_mb').default(0),
+  autoRenew: boolean('auto_renew').default(true).notNull(),
+  subscriptionEndDate: timestamp('subscription_end_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+}, (table) => ({
+  customerIdx: index('email_accounts_customer_idx').on(table.customerId),
+  emailIdx: uniqueIndex('email_accounts_email_idx').on(table.email),
+}));
+
+export const emailAccountsRelations = relations(emailAccounts, ({ one }) => ({
+  customer: one(customers, { fields: [emailAccounts.customerId], references: [customers.id] }),
+  plan: one(emailPlans, { fields: [emailAccounts.planId], references: [emailPlans.id] }),
+  domain: one(domains, { fields: [emailAccounts.domainId], references: [domains.id] }),
+}));
+
+// ============================================================================
+// SSL CERTIFICATES
+// ============================================================================
+
+export const sslCertificates = pgTable('ssl_certificates', {
+  id: serial('id').primaryKey(),
+  uuid: pgUuid('uuid').defaultRandom().notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  domainId: integer('domain_id').references(() => domains.id),
+  type: varchar('type', { length: 20 }).notNull(), // dv, ov, ev, wildcard, san
+  provider: varchar('provider', { length: 50 }).default('letsencrypt'),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  issuedAt: timestamp('issued_at'),
+  expiresAt: timestamp('expires_at'),
+  autoRenew: boolean('auto_renew').default(true).notNull(),
+  domainName: varchar('domain_name', { length: 253 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  customerIdx: index('ssl_customer_idx').on(table.customerId),
+  domainIdx: index('ssl_domain_idx').on(table.domainId),
+}));
+
+export const sslCertificatesRelations = relations(sslCertificates, ({ one }) => ({
+  customer: one(customers, { fields: [sslCertificates.customerId], references: [customers.id] }),
+  domain: one(domains, { fields: [sslCertificates.domainId], references: [domains.id] }),
+}));
+
+// ============================================================================
+// SITELOCK ACCOUNTS
+// ============================================================================
+
+export const sitelockAccounts = pgTable('sitelock_accounts', {
+  id: serial('id').primaryKey(),
+  uuid: pgUuid('uuid').defaultRandom().notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  domainId: integer('domain_id').references(() => domains.id),
+  plan: varchar('plan', { length: 50 }).notNull(), // basic, professional, enterprise
+  status: varchar('status', { length: 20 }).default('active').notNull(),
+  lastScanAt: timestamp('last_scan_at'),
+  lastScanResult: jsonb('last_scan_result'),
+  autoRenew: boolean('auto_renew').default(true).notNull(),
+  subscriptionEndDate: timestamp('subscription_end_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+}, (table) => ({
+  customerIdx: index('sitelock_customer_idx').on(table.customerId),
+}));
+
+export const sitelockAccountsRelations = relations(sitelockAccounts, ({ one }) => ({
+  customer: one(customers, { fields: [sitelockAccounts.customerId], references: [customers.id] }),
+  domain: one(domains, { fields: [sitelockAccounts.domainId], references: [domains.id] }),
+}));
+
+// ============================================================================
+// WEBSITE PROJECTS
+// ============================================================================
+
+export const websiteProjects = pgTable('website_projects', {
+  id: serial('id').primaryKey(),
+  uuid: pgUuid('uuid').defaultRandom().notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  template: varchar('template', { length: 50 }),
+  status: varchar('status', { length: 20 }).default('draft').notNull(), // draft, published, archived
+  publishedUrl: varchar('published_url', { length: 255 }),
+  customDomain: varchar('custom_domain', { length: 253 }),
+  settings: jsonb('settings').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+}, (table) => ({
+  customerIdx: index('website_projects_customer_idx').on(table.customerId),
+}));
+
+export const websiteProjectsRelations = relations(websiteProjects, ({ one }) => ({
+  customer: one(customers, { fields: [websiteProjects.customerId], references: [customers.id] }),
+}));
+
+// ============================================================================
+// SUPPORT TICKETS
+// ============================================================================
+
+export const supportTickets = pgTable('support_tickets', {
+  id: serial('id').primaryKey(),
+  uuid: pgUuid('uuid').defaultRandom().notNull().unique(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  category: varchar('category', { length: 50 }).notNull(), // billing, technical, domains, hosting, general
+  priority: varchar('priority', { length: 20 }).default('normal').notNull(), // low, normal, high, urgent
+  status: varchar('status', { length: 20 }).default('open').notNull(), // open, in_progress, waiting, resolved, closed
+  closedAt: timestamp('closed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  customerIdx: index('tickets_customer_idx').on(table.customerId),
+  statusIdx: index('tickets_status_idx').on(table.status),
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({
+  customer: one(customers, { fields: [supportTickets.customerId], references: [customers.id] }),
+  messages: many(ticketMessages),
+}));
+
+// ============================================================================
+// TICKET MESSAGES
+// ============================================================================
+
+export const ticketMessages = pgTable('ticket_messages', {
+  id: serial('id').primaryKey(),
+  ticketId: integer('ticket_id').references(() => supportTickets.id).notNull(),
+  senderId: integer('sender_id').references(() => customers.id),
+  senderType: varchar('sender_type', { length: 20 }).default('customer').notNull(), // customer, agent, system
+  body: text('body').notNull(),
+  attachments: jsonb('attachments').default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  ticketIdx: index('ticket_messages_ticket_idx').on(table.ticketId),
+}));
+
+export const ticketMessagesRelations = relations(ticketMessages, ({ one }) => ({
+  ticket: one(supportTickets, { fields: [ticketMessages.ticketId], references: [supportTickets.id] }),
+  sender: one(customers, { fields: [ticketMessages.senderId], references: [customers.id] }),
+}));
+
+// ============================================================================
+// ZOD SCHEMAS
+// ============================================================================
+
+export const insertCustomerSchema = createInsertSchema(customers);
+export const selectCustomerSchema = createSelectSchema(customers);
+export const insertDomainSchema = createInsertSchema(domains);
+export const selectDomainSchema = createSelectSchema(domains);
+export const insertHostingPlanSchema = createInsertSchema(hostingPlans);
+export const selectHostingPlanSchema = createSelectSchema(hostingPlans);
+export const insertHostingAccountSchema = createInsertSchema(hostingAccounts);
+export const selectHostingAccountSchema = createSelectSchema(hostingAccounts);
+export const insertOrderSchema = createInsertSchema(orders);
+export const selectOrderSchema = createSelectSchema(orders);
+export const insertOrderItemSchema = createInsertSchema(orderItems);
+export const selectOrderItemSchema = createSelectSchema(orderItems);
+export const insertPaymentSchema = createInsertSchema(payments);
+export const selectPaymentSchema = createSelectSchema(payments);
+export const insertEmailPlanSchema = createInsertSchema(emailPlans);
+export const selectEmailPlanSchema = createSelectSchema(emailPlans);
+export const insertEmailAccountSchema = createInsertSchema(emailAccounts);
+export const selectEmailAccountSchema = createSelectSchema(emailAccounts);
+export const insertSslCertificateSchema = createInsertSchema(sslCertificates);
+export const selectSslCertificateSchema = createSelectSchema(sslCertificates);
+export const insertSitelockAccountSchema = createInsertSchema(sitelockAccounts);
+export const selectSitelockAccountSchema = createSelectSchema(sitelockAccounts);
+export const insertWebsiteProjectSchema = createInsertSchema(websiteProjects);
+export const selectWebsiteProjectSchema = createSelectSchema(websiteProjects);
+export const insertSupportTicketSchema = createInsertSchema(supportTickets);
+export const selectSupportTicketSchema = createSelectSchema(supportTickets);
+export const insertTicketMessageSchema = createInsertSchema(ticketMessages);
+export const selectTicketMessageSchema = createSelectSchema(ticketMessages);
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -798,3 +1033,27 @@ export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
 export type CartSession = typeof cartSessions.$inferSelect;
 export type NewCartSession = typeof cartSessions.$inferInsert;
+
+// Email types
+export type EmailPlan = typeof emailPlans.$inferSelect;
+export type NewEmailPlan = typeof emailPlans.$inferInsert;
+export type EmailAccount = typeof emailAccounts.$inferSelect;
+export type NewEmailAccount = typeof emailAccounts.$inferInsert;
+
+// SSL types
+export type SslCertificate = typeof sslCertificates.$inferSelect;
+export type NewSslCertificate = typeof sslCertificates.$inferInsert;
+
+// SiteLock types
+export type SitelockAccount = typeof sitelockAccounts.$inferSelect;
+export type NewSitelockAccount = typeof sitelockAccounts.$inferInsert;
+
+// Website builder types
+export type WebsiteProject = typeof websiteProjects.$inferSelect;
+export type NewWebsiteProject = typeof websiteProjects.$inferInsert;
+
+// Support types
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type NewSupportTicket = typeof supportTickets.$inferInsert;
+export type TicketMessage = typeof ticketMessages.$inferSelect;
+export type NewTicketMessage = typeof ticketMessages.$inferInsert;

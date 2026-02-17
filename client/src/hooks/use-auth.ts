@@ -2,12 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
-interface AuthState {
-  customer: any | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
 export function useAuth() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -20,30 +14,23 @@ export function useAuth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      authApi.login(email, password),
+    mutationFn: ({ email, password }: { email: string; password: string }) => authApi.login(email, password),
     onSuccess: (data) => {
-      localStorage.setItem('accessToken', data.tokens.accessToken);
-      localStorage.setItem('refreshToken', data.tokens.refreshToken);
       queryClient.setQueryData(['auth', 'me'], data.customer);
       navigate('/dashboard');
     },
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: { email: string; password: string; firstName: string; lastName: string }) =>
-      authApi.register(data),
+    mutationFn: (data: { email: string; password: string; firstName: string; lastName: string }) => authApi.register(data),
     onSuccess: (data) => {
-      localStorage.setItem('accessToken', data.tokens.accessToken);
-      localStorage.setItem('refreshToken', data.tokens.refreshToken);
       queryClient.setQueryData(['auth', 'me'], data.customer);
       navigate('/dashboard');
     },
   });
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+  const logout = async () => {
+    try { await authApi.logout(); } catch {}
     queryClient.clear();
     navigate('/');
   };

@@ -3,8 +3,80 @@
  * Handles WordPress site provisioning and management via WPMUDEV API
  */
 
+import crypto from 'crypto';
+
 const WPMUDEV_API_URL = process.env.WPMUDEV_API_URL || 'https://premium.wpmudev.org/api';
 const WPMUDEV_API_KEY = process.env.WPMUDEV_API_KEY || '';
+const CREDENTIAL_ENCRYPTION_KEY = process.env.CREDENTIAL_ENCRYPTION_KEY || '';
+
+export class WPMUDevError extends Error {
+  code: string;
+  retryable: boolean;
+
+  constructor(message: string, code: string, retryable: boolean = false) {
+    super(message);
+    this.name = 'WPMUDevError';
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
+/**
+ * Encrypt a credential string using AES-256-GCM
+ */
+function encryptCredential(plaintext: string): string {
+  if (!CREDENTIAL_ENCRYPTION_KEY) {
+    console.warn('CREDENTIAL_ENCRYPTION_KEY not set - storing credentials in base64 only (NOT SECURE)');
+    return Buffer.from(plaintext).toString('base64');
+  }
+
+  const key = Buffer.from(CREDENTIAL_ENCRYPTION_KEY, 'hex');
+  if (key.length !== 32) {
+    throw new WPMUDevError(
+      'CREDENTIAL_ENCRYPTION_KEY must be 32 bytes (64 hex characters)',
+      'ENCRYPTION_CONFIG_ERROR'
+    );
+  }
+
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+  let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+
+  const authTag = cipher.getAuthTag().toString('hex');
+
+  // Format: iv:authTag:ciphertext
+  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+}
+
+/**
+ * Decrypt a credential string encrypted with AES-256-GCM
+ */
+export function decryptCredential(encrypted: string): string {
+  if (!CREDENTIAL_ENCRYPTION_KEY) {
+    // Fallback: assume base64 if no key configured
+    return Buffer.from(encrypted, 'base64').toString('utf8');
+  }
+
+  const key = Buffer.from(CREDENTIAL_ENCRYPTION_KEY, 'hex');
+  const parts = encrypted.split(':');
+  if (parts.length !== 3) {
+    throw new WPMUDevError('Invalid encrypted credential format', 'DECRYPTION_ERROR');
+  }
+
+  const [ivHex, authTagHex, ciphertext] = parts;
+  const iv = Buffer.from(ivHex, 'hex');
+  const authTag = Buffer.from(authTagHex, 'hex');
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
 
 interface SiteProvisioningData {
   siteName: string;
@@ -31,12 +103,15 @@ interface SiteStats {
 export class WPMUDevIntegration {
   private apiUrl: string;
   private apiKey: string;
+  private isMockMode: boolean;
 
   constructor() {
     this.apiUrl = WPMUDEV_API_URL;
     this.apiKey = WPMUDEV_API_KEY;
 
-    if (!this.apiKey) {
+    this.isMockMode = !this.apiKey || this.apiKey === 'test' || this.apiKey === 'your_wpmudev_api_key';
+
+    if (this.isMockMode) {
       console.warn('WPMUDEV API key not configured - using mock mode');
     }
   }
@@ -52,9 +127,13 @@ export class WPMUDevIntegration {
     const url = `${this.apiUrl}${endpoint}`;
 
     // Mock mode for development
-    if (!this.apiKey || this.apiKey === 'your_wpmudev_api_key') {
+    if (this.isMockMode) {
       return this.mockResponse(endpoint, method, body);
     }
+
+    // Request timeout via AbortController (15s)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
       const response = await fetch(url, {
@@ -65,17 +144,38 @@ export class WPMUDevIntegration {
           'Accept': 'application/json',
         },
         ...(body && { body: JSON.stringify(body) }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`WPMUDEV API error: ${response.status} - ${error}`);
+        const errorText = await response.text();
+        const retryable = response.status >= 500;
+        throw new WPMUDevError(
+          `WPMUDEV API error (${response.status}): ${errorText}`,
+          `WPMUDEV_HTTP_${response.status}`,
+          retryable
+        );
       }
 
       return await response.json();
     } catch (error) {
-      console.error('WPMUDEV API request failed:', error);
-      throw error;
+      if (error instanceof WPMUDevError) {
+        throw error;
+      }
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new WPMUDevError(
+          'WPMUDEV API request timed out',
+          'WPMUDEV_TIMEOUT',
+          true
+        );
+      }
+      throw new WPMUDevError(
+        `WPMUDEV API request failed: ${(error as Error).message}`,
+        'WPMUDEV_NETWORK_ERROR',
+        true
+      );
     }
   }
 
@@ -91,17 +191,22 @@ export class WPMUDevIntegration {
    * Provision a new WordPress site
    */
   async provisionSite(data: SiteProvisioningData): Promise<any> {
+    const generatedPassword = data.adminPassword || this.generatePassword();
+
     const payload = {
       name: data.siteName,
       domain: data.domain,
       plan_id: data.planId,
       admin_email: data.adminEmail,
       admin_username: data.adminUsername || this.generateUsername(data.adminEmail),
-      admin_password: data.adminPassword || this.generatePassword(),
+      admin_password: generatedPassword,
       ...data.options,
     };
 
     const response = await this.apiRequest('/hosting/v1/sites', 'POST', payload);
+
+    // Encrypt the password before returning
+    const encryptedPassword = encryptCredential(generatedPassword);
 
     return {
       success: true,
@@ -117,7 +222,7 @@ export class WPMUDevIntegration {
       wpAdmin: {
         url: `https://${response.domain}/wp-admin`,
         username: payload.admin_username,
-        password: payload.admin_password,
+        encryptedPassword,
       },
       tempUrl: response.temp_url,
     };
@@ -366,20 +471,15 @@ export class WPMUDevIntegration {
    */
   private generateUsername(email: string): string {
     const base = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-    const random = Math.random().toString(36).substring(2, 6);
+    const random = crypto.randomBytes(3).toString('hex');
     return `${base}_${random}`;
   }
 
   /**
-   * Generate a secure random password
+   * Generate a secure random password using crypto.randomBytes
    */
   private generatePassword(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 16; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
+    return crypto.randomBytes(24).toString('base64url');
   }
 
   /**

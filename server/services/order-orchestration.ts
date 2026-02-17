@@ -6,9 +6,22 @@
 
 import { eq, and } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { Resend } from 'resend';
 import * as schema from '../../shared/schema.js';
 import { OpenSRSIntegration } from './openrs-integration.js';
 import { WPMUDevIntegration } from './wpmudev-integration.js';
+
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@hostsblue.com';
+
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export class OrderOrchestrator {
   private db: NodePgDatabase<typeof schema>;
@@ -34,7 +47,7 @@ export class OrderOrchestrator {
     paymentData: any
   ): Promise<void> {
     const numericOrderId = typeof orderId === 'string' ? parseInt(orderId) : orderId;
-    
+
     console.log(`[Orchestrator] Processing payment success for order ${orderId}`);
 
     // Start a transaction for data consistency
@@ -83,17 +96,17 @@ export class OrderOrchestrator {
 
       // 4. Process each order item
       const results = await Promise.allSettled(
-        order.items.map(item => this.processOrderItem(tx, item, order.customer))
+        order.items.map((item: schema.OrderItem) => this.processOrderItem(tx, item, order.customer as schema.Customer))
       );
 
       // 5. Check for failures
       const failures = results
-        .map((r, i) => ({ result: r, item: order.items[i] }))
-        .filter(({ result }) => result.status === 'rejected');
+        .map((r: PromiseSettledResult<any>, i: number) => ({ result: r, item: order.items[i] }))
+        .filter(({ result }: { result: PromiseSettledResult<any> }) => result.status === 'rejected');
 
       if (failures.length > 0) {
         console.error(`[Orchestrator] Some items failed for order ${orderId}:`, failures);
-        
+
         // Update order to partial failure or failed
         await tx.update(schema.orders)
           .set({
@@ -127,7 +140,9 @@ export class OrderOrchestrator {
           .where(eq(schema.orders.id, numericOrderId));
 
         // Send confirmation email (async, don't wait)
-        this.sendOrderConfirmation(order);
+        this.sendOrderConfirmation(order).catch(err => {
+          console.error(`[Orchestrator] Failed to send confirmation email for order ${order.id}:`, err);
+        });
       }
 
       // 6. Log success
@@ -160,7 +175,7 @@ export class OrderOrchestrator {
 
     // Update item status to processing
     await tx.update(schema.orderItems)
-      .set({ status: 'processing', updatedAt: new Date() })
+      .set({ status: 'processing' })
       .where(eq(schema.orderItems.id, item.id));
 
     try {
@@ -205,7 +220,7 @@ export class OrderOrchestrator {
         .set({
           status: 'failed',
           errorMessage: error.message,
-          retryCount: item.retryCount + 1,
+          retryCount: (item.retryCount ?? 0) + 1,
         })
         .where(eq(schema.orderItems.id, item.id));
 
@@ -221,28 +236,48 @@ export class OrderOrchestrator {
     item: schema.OrderItem,
     customer: schema.Customer
   ): Promise<any> {
-    const config = item.configuration;
+    const config = item.configuration as Record<string, any>;
     const domainName = `${config.domain}${config.tld}`;
 
-    // Get or create contact
+    // Get or create contact - throw error if customer profile is incomplete
     let contact = await tx.query.domainContacts.findFirst({
       where: eq(schema.domainContacts.customerId, customer.id),
     });
 
     if (!contact) {
-      // Create contact from customer info
+      // Validate that customer has the required contact fields
+      if (!customer.firstName || !customer.lastName) {
+        throw new Error('Customer profile incomplete: first name and last name are required for domain registration');
+      }
+      if (!customer.phone) {
+        throw new Error('Customer profile incomplete: phone number is required for domain registration');
+      }
+      if (!customer.address1) {
+        throw new Error('Customer profile incomplete: address is required for domain registration');
+      }
+      if (!customer.city) {
+        throw new Error('Customer profile incomplete: city is required for domain registration');
+      }
+      if (!customer.state) {
+        throw new Error('Customer profile incomplete: state/province is required for domain registration');
+      }
+      if (!customer.postalCode) {
+        throw new Error('Customer profile incomplete: postal code is required for domain registration');
+      }
+
+      // Create contact from customer info (all fields verified above)
       const [newContact] = await tx.insert(schema.domainContacts).values({
         customerId: customer.id,
         contactType: 'owner',
-        firstName: customer.firstName || 'Unknown',
-        lastName: customer.lastName || 'User',
+        firstName: customer.firstName,
+        lastName: customer.lastName,
         companyName: customer.companyName,
         email: customer.email,
-        phone: customer.phone || '+1.5555555555',
-        address1: customer.address1 || '123 Main St',
-        city: customer.city || 'New York',
-        state: customer.state || 'NY',
-        postalCode: customer.postalCode || '10001',
+        phone: customer.phone,
+        address1: customer.address1,
+        city: customer.city,
+        state: customer.state,
+        postalCode: customer.postalCode,
         countryCode: customer.countryCode || 'US',
       }).returning();
       contact = newContact;
@@ -251,7 +286,7 @@ export class OrderOrchestrator {
     // Register with OpenSRS
     const registrationResult = await this.openSRS.registerDomain({
       domain: domainName,
-      period: Math.ceil(item.termMonths / 12),
+      period: Math.ceil((item.termMonths ?? 12) / 12),
       contacts: {
         owner: {
           firstName: contact.firstName,
@@ -267,7 +302,10 @@ export class OrderOrchestrator {
           country: contact.countryCode,
         },
       },
-      nameservers: ['ns1.hostsblue.com', 'ns2.hostsblue.com'],
+      nameservers: [
+        process.env.HOSTSBLUE_NS1 || 'ns1.hostsblue.com',
+        process.env.HOSTSBLUE_NS2 || 'ns2.hostsblue.com',
+      ],
       privacy: config.privacy || false,
     });
 
@@ -282,12 +320,15 @@ export class OrderOrchestrator {
       tld: config.tld,
       status: 'active',
       registrationDate: new Date(),
-      expiryDate: new Date(Date.now() + item.termMonths * 30 * 24 * 60 * 60 * 1000),
-      registrationPeriodYears: Math.ceil(item.termMonths / 12),
+      expiryDate: new Date(Date.now() + (item.termMonths ?? 12) * 30 * 24 * 60 * 60 * 1000),
+      registrationPeriodYears: Math.ceil((item.termMonths ?? 12) / 12),
       autoRenew: true,
       privacyEnabled: config.privacy || false,
       ownerContactId: contact.id,
-      nameservers: ['ns1.hostsblue.com', 'ns2.hostsblue.com'],
+      nameservers: [
+        process.env.HOSTSBLUE_NS1 || 'ns1.hostsblue.com',
+        process.env.HOSTSBLUE_NS2 || 'ns2.hostsblue.com',
+      ],
       useHostsBlueNameservers: true,
       openrsOrderId: registrationResult.orderId,
       openrsDomainId: registrationResult.domainId,
@@ -312,7 +353,7 @@ export class OrderOrchestrator {
     item: schema.OrderItem,
     customer: schema.Customer
   ): Promise<any> {
-    const config = item.configuration;
+    const config = item.configuration as Record<string, any>;
     const domainName = `${config.domain}${config.tld}`;
 
     // Get contact
@@ -380,7 +421,7 @@ export class OrderOrchestrator {
     item: schema.OrderItem,
     customer: schema.Customer
   ): Promise<any> {
-    const config = item.configuration;
+    const config = item.configuration as Record<string, any>;
     const plan = await tx.query.hostingPlans.findFirst({
       where: eq(schema.hostingPlans.id, config.planId),
     });
@@ -396,9 +437,9 @@ export class OrderOrchestrator {
       siteName: config.siteName || `${customer.firstName}'s Site`,
       primaryDomain: config.domain || null,
       status: 'provisioning',
-      billingCycle: item.termMonths >= 12 ? 'yearly' : 'monthly',
+      billingCycle: (item.termMonths ?? 12) >= 12 ? 'yearly' : 'monthly',
       subscriptionStartDate: new Date(),
-      subscriptionEndDate: new Date(Date.now() + item.termMonths * 30 * 24 * 60 * 60 * 1000),
+      subscriptionEndDate: new Date(Date.now() + (item.termMonths ?? 12) * 30 * 24 * 60 * 60 * 1000),
       autoRenew: true,
     }).returning();
 
@@ -422,7 +463,7 @@ export class OrderOrchestrator {
         wpmudevBlogId: provisionResult.blogId,
         wpmudevHostingId: provisionResult.hostingId,
         wpAdminUsername: provisionResult.wpAdmin.username,
-        wpAdminPasswordEncrypted: provisionResult.wpAdmin.password, // Should be encrypted
+        wpAdminPasswordEncrypted: provisionResult.wpAdmin.encryptedPassword,
         sftpUsername: provisionResult.sftp.username,
         sftpHost: provisionResult.sftp.host,
         primaryDomain: provisionResult.domain,
@@ -561,15 +602,49 @@ export class OrderOrchestrator {
   }
 
   /**
-   * Send order confirmation email
+   * Send order confirmation email using Resend SDK
    */
   private async sendOrderConfirmation(order: any): Promise<void> {
-    // TODO: Implement with Resend
-    console.log(`[Orchestrator] Would send confirmation email for order ${order.id}`);
+    if (!process.env.RESEND_API_KEY) {
+      console.log(`[Orchestrator] Resend API key not configured, skipping confirmation email for order ${order.id}`);
+      return;
+    }
+
+    try {
+      const customerName = [order.customer?.firstName, order.customer?.lastName]
+        .filter(Boolean)
+        .join(' ') || 'Customer';
+
+      const itemsHtml = order.items
+        .map((item: any) => `<li>${item.description} - $${(item.totalPrice / 100).toFixed(2)}</li>`)
+        .join('');
+
+      const resendClient = getResend();
+      if (!resendClient) return;
+      await resendClient.emails.send({
+        from: FROM_EMAIL,
+        to: order.customer?.email || order.billingEmail,
+        subject: `Order Confirmation - ${order.orderNumber}`,
+        html: `
+          <h1>Thank you for your order, ${customerName}!</h1>
+          <p>Your order <strong>${order.orderNumber}</strong> has been completed successfully.</p>
+          <h2>Order Summary</h2>
+          <ul>${itemsHtml}</ul>
+          <p><strong>Total: $${(order.total / 100).toFixed(2)} ${order.currency}</strong></p>
+          <p>You can view your order details in your <a href="${process.env.CLIENT_URL}/dashboard/orders">HostsBlue dashboard</a>.</p>
+          <p>If you have any questions, please contact our support team.</p>
+          <p>Best regards,<br/>The HostsBlue Team</p>
+        `,
+      });
+
+      console.log(`[Orchestrator] Sent confirmation email for order ${order.id}`);
+    } catch (error) {
+      console.error(`[Orchestrator] Failed to send confirmation email for order ${order.id}:`, error);
+    }
   }
 
   /**
-   * Retry failed order items
+   * Retry failed order items with exponential backoff
    */
   async retryFailedItems(orderId: number): Promise<void> {
     const order = await this.db.query.orders.findFirst({
@@ -585,7 +660,7 @@ export class OrderOrchestrator {
     }
 
     const failedItems = order.items.filter(
-      item => item.status === 'failed' && item.retryCount < 3
+      (item: schema.OrderItem) => item.status === 'failed' && (item.retryCount ?? 0) < 3
     );
 
     if (failedItems.length === 0) {
@@ -596,9 +671,18 @@ export class OrderOrchestrator {
     console.log(`[Orchestrator] Retrying ${failedItems.length} items for order ${orderId}`);
 
     await this.db.transaction(async (tx) => {
-      for (const item of failedItems) {
+      for (let i = 0; i < failedItems.length; i++) {
+        const item = failedItems[i];
+
+        // Exponential backoff delay between retries
+        if (i > 0) {
+          const backoffMs = Math.pow(2, item.retryCount ?? 0) * 1000; // 1s, 2s, 4s based on retry count
+          console.log(`[Orchestrator] Waiting ${backoffMs}ms before retry for item ${item.id}`);
+          await delay(backoffMs);
+        }
+
         try {
-          await this.processOrderItem(tx, item, order.customer);
+          await this.processOrderItem(tx, item, order.customer as schema.Customer);
         } catch (error) {
           console.error(`[Orchestrator] Retry failed for item ${item.id}:`, error);
         }
@@ -611,7 +695,7 @@ export class OrderOrchestrator {
       });
 
       const allCompleted = updatedOrder?.items.every(
-        item => item.status === 'completed'
+        (item: schema.OrderItem) => item.status === 'completed'
       );
 
       if (allCompleted) {

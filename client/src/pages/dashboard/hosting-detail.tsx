@@ -5,7 +5,7 @@ import { Server, ArrowLeft, Loader2, Settings, ExternalLink, Database } from 'lu
 
 export function HostingDetailPage() {
   const { uuid } = useParams<{ uuid: string }>();
-  
+
   const { data: account, isLoading } = useQuery({
     queryKey: ['hosting', uuid],
     queryFn: () => hostingApi.getAccount(uuid!),
@@ -15,16 +15,16 @@ export function HostingDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#1844A6] animate-spin" />
       </div>
     );
   }
 
   if (!account) {
     return (
-      <div className="card text-center py-16">
-        <h3 className="text-lg font-medium text-white mb-2">Hosting account not found</h3>
-        <Link to="/dashboard/hosting" className="text-purple-400">
+      <div className="bg-white border border-gray-200 rounded-[7px] text-center py-16 px-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Hosting account not found</h3>
+        <Link to="/dashboard/hosting" className="text-[#1844A6] hover:text-[#133A8A]">
           Back to hosting
         </Link>
       </div>
@@ -34,8 +34,8 @@ export function HostingDetailPage() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-zinc-400">
-        <Link to="/dashboard/hosting" className="hover:text-white flex items-center gap-1">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <Link to="/dashboard/hosting" className="hover:text-gray-900 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
           Back to Hosting
         </Link>
@@ -44,11 +44,11 @@ export function HostingDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-            <Server className="w-6 h-6 text-blue-400" />
+          <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+            <Server className="w-6 h-6 text-[#1844A6]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">{account.siteName}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{account.siteName}</h1>
             <div className="flex items-center gap-3">
               <span className={`badge badge-${
                 account.status === 'active' ? 'success' :
@@ -71,63 +71,63 @@ export function HostingDetailPage() {
 
       {/* Site Info */}
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="card">
-          <h2 className="text-lg font-semibold text-white mb-4">Site Details</h2>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Site Details</h2>
           <div className="space-y-4">
-            <div className="flex justify-between py-2 border-b border-zinc-800">
-              <span className="text-zinc-400">Primary Domain</span>
-              <span className="text-white">{account.primaryDomain || 'Not set'}</span>
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-gray-500">Primary Domain</span>
+              <span className="text-gray-900">{account.primaryDomain || 'Not set'}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-zinc-800">
-              <span className="text-zinc-400">Created</span>
-              <span className="text-white">
-                {account.createdAt 
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-gray-500">Created</span>
+              <span className="text-gray-900">
+                {account.createdAt
                   ? new Date(account.createdAt).toLocaleDateString()
                   : 'N/A'}
               </span>
             </div>
-            <div className="flex justify-between py-2 border-b border-zinc-800">
-              <span className="text-zinc-400">Billing Cycle</span>
-              <span className="text-white capitalize">{account.billingCycle}</span>
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-gray-500">Billing Cycle</span>
+              <span className="text-gray-900 capitalize">{account.billingCycle}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-zinc-800">
-              <span className="text-zinc-400">Auto-Renew</span>
-              <span className={account.autoRenew ? 'text-green-400' : 'text-zinc-400'}>
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-gray-500">Auto-Renew</span>
+              <span className={account.autoRenew ? 'text-green-600' : 'text-gray-500'}>
                 {account.autoRenew ? 'Enabled' : 'Disabled'}
               </span>
             </div>
             <div className="flex justify-between py-2">
-              <span className="text-zinc-400">SSL Status</span>
-              <span className={account.sslStatus === 'active' ? 'text-green-400' : 'text-zinc-400'}>
+              <span className="text-gray-500">SSL Status</span>
+              <span className={account.sslStatus === 'active' ? 'text-green-600' : 'text-gray-500'}>
                 {account.sslStatus === 'active' ? 'Active' : 'Pending'}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <h2 className="text-lg font-semibold text-white mb-4">Access Details</h2>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Access Details</h2>
           <div className="space-y-4">
-            <div className="p-3 bg-zinc-800/50 rounded-lg">
-              <p className="text-sm text-zinc-400 mb-1">WordPress Admin</p>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-500 mb-1">WordPress Admin</p>
               {account.primaryDomain ? (
                 <a
                   href={`https://${account.primaryDomain}/wp-admin`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-purple-400 flex items-center gap-1 hover:text-purple-300"
+                  className="text-[#1844A6] flex items-center gap-1 hover:text-[#133A8A]"
                 >
                   Open WP Admin
                   <ExternalLink className="w-3 h-3" />
                 </a>
               ) : (
-                <p className="text-zinc-500">Not available</p>
+                <p className="text-gray-400">Not available</p>
               )}
             </div>
-            
-            <div className="p-3 bg-zinc-800/50 rounded-lg">
-              <p className="text-sm text-zinc-400 mb-1">SFTP Access</p>
-              <div className="text-sm text-zinc-300">
+
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-500 mb-1">SFTP Access</p>
+              <div className="text-sm text-gray-600">
                 <p>Host: {account.sftpHost || 'N/A'}</p>
                 <p>Username: {account.sftpUsername || 'N/A'}</p>
               </div>
@@ -137,8 +137,8 @@ export function HostingDetailPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+      <div className="bg-white border border-gray-200 rounded-[7px] p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           {account.primaryDomain && (
             <a
@@ -151,7 +151,10 @@ export function HostingDetailPage() {
               Visit Site
             </a>
           )}
-          <button className="btn-outline text-sm flex items-center gap-2">
+          <button
+            onClick={() => alert('Backups functionality coming soon')}
+            className="btn-outline text-sm flex items-center gap-2"
+          >
             <Database className="w-4 h-4" />
             View Backups
           </button>

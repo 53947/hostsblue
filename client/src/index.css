@@ -2,275 +2,179 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
 :root {
-  --button-outline: rgba(0, 0, 0, 0.1);
-  --badge-outline: rgba(0, 0, 0, 0.05);
-  --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0, 0, 0, 0.03);
-  --elevate-2: rgba(0, 0, 0, 0.08);
-
-  /* HostsBlue Brand Colors */
-  --primary: 0 128 96; /* #008060 - Green */
-  --secondary: 0 0 255; /* #0000FF - Blue */
-  --accent: 0 128 96; /* #008060 - Green */
-  
-  --background: 0 0% 100%;
-  --foreground: 9 6% 9%; /* #09080e */
-  --border: 0 0% 90%;
-  --card: 0 0% 98%;
-  --card-foreground: 9 6% 9%;
-  --card-border: 0 0% 94%;
-  --sidebar: 0 0% 96%;
-  --sidebar-foreground: 9 6% 9%;
-  --sidebar-border: 0 0% 92%;
-  --sidebar-primary: 0 128 96;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 128 96;
-  --sidebar-accent-foreground: 9 6% 9%;
-  --sidebar-ring: 0 128 96;
-  --popover: 0 0% 94%;
-  --popover-foreground: 9 6% 9%;
-  --popover-border: 0 0% 90%;
-  --ring: 0 128 96;
-  
+  --primary: #1844A6;
+  --primary-hover: #133A8A;
+  --secondary: #064A6C;
+  --accent: #008060;
+  --blue-pure: #0000FF;
+  --background: #ffffff;
+  --foreground: #111827;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+  --card: #ffffff;
+  --card-border: #E5E7EB;
+  --sidebar-bg: #F9FAFB;
   --font-sans: Archivo, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: Menlo, monospace;
-  --radius: 0.5rem;
-}
-
-.dark {
-  --button-outline: rgba(255, 255, 255, 0.1);
-  --badge-outline: rgba(255, 255, 255, 0.05);
-  --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255, 255, 255, 0.04);
-  --elevate-2: rgba(255, 255, 255, 0.09);
-
-  /* HostsBlue Brand Colors (Dark Mode) */
-  --primary: 0 184 127; /* Lighter green for dark mode */
-  --secondary: 100 149 237; /* Lighter blue for dark mode */
-  --accent: 0 184 127;
-  
-  --background: 240 6% 6%;
-  --foreground: 0 0% 98%;
-  --border: 240 5% 18%;
-  --card: 240 5% 8%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 240 5% 12%;
-  --sidebar: 240 5% 10%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 240 5% 14%;
-  --sidebar-primary: 0 184 127;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 184 127;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 0 184 127;
-  --ring: 0 184 127;
+  --radius: 7px;
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    border-color: var(--border);
   }
-
   html {
     font-family: var(--font-sans);
     @apply antialiased;
   }
-
   body {
     @apply font-sans antialiased;
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--background);
+    color: var(--foreground);
   }
-
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Archivo', sans-serif;
     font-weight: 600;
-    text-shadow: 0 1pt 2pt rgba(0, 0, 0, 0.1);
   }
 }
 
 @layer components {
-  /* HostsBlue Logo Text Styles */
   .logo-hosts {
     font-family: 'Archivo', sans-serif;
     font-weight: 600;
     font-stretch: semi-expanded;
-    color: rgb(var(--primary));
-    text-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+    color: #008060;
   }
-
   .logo-blue {
     font-family: 'Archivo', sans-serif;
     font-weight: 400;
-    color: rgb(var(--secondary));
-    text-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+    color: #0000FF;
   }
-
   .logo-com {
     font-family: 'Archivo', sans-serif;
     font-weight: 400;
-    color: rgb(var(--accent));
-    text-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+    color: #008060;
   }
 
-  /* Button Styles */
   .btn-primary {
-    @apply text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
-    background-color: rgb(var(--primary));
-    box-shadow: 0 4px 6px rgba(0, 128, 96, 0.15);
+    @apply text-white font-medium px-6 py-3 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--primary);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgba(24, 68, 166, 0.15);
   }
-
   .btn-primary:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 6px 12px rgba(0, 128, 96, 0.2);
+    background-color: var(--primary-hover);
+    box-shadow: 0 2px 8px rgba(24, 68, 166, 0.2);
   }
 
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium px-6 py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply font-medium px-6 py-3 transition-all duration-200 border disabled:opacity-50 disabled:cursor-not-allowed;
+    color: var(--secondary);
+    border-color: var(--secondary);
+    border-radius: var(--radius);
+    background: transparent;
+  }
+  .btn-secondary:hover {
+    background-color: var(--secondary);
+    color: white;
   }
 
   .btn-outline {
-    @apply bg-transparent hover:bg-gray-100 text-gray-900 font-medium px-6 py-3 rounded-lg transition-all duration-200 border border-gray-300 hover:border-gray-400;
+    @apply bg-transparent hover:bg-gray-50 text-gray-700 font-medium px-6 py-3 transition-all duration-200 border border-gray-300 hover:border-gray-400;
+    border-radius: var(--radius);
   }
 
-  /* Card Styles */
+  .btn-arrow-hover {
+    @apply inline-flex items-center gap-1;
+  }
+  .btn-arrow-hover::after {
+    content: '\2192';
+    @apply transition-transform duration-200;
+    transform: translateX(0);
+  }
+  .btn-arrow-hover:hover::after {
+    transform: translateX(4px);
+  }
+
   .card {
-    background-color: hsl(var(--card));
-    border: 1px solid hsl(var(--card-border));
-    @apply rounded-lg p-6 transition-all duration-200;
+    background-color: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    @apply p-6 transition-all duration-200;
   }
-
-  .card-hover {
-    @apply hover:shadow-lg;
-  }
-
   .card-hover:hover {
-    border-color: hsl(var(--border));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
-  /* Form Styles */
   .input {
     width: 100%;
     background-color: white;
-    border: 1px solid hsl(var(--border));
-    @apply rounded-lg px-4 py-3 transition-all duration-200;
-    color: hsl(var(--foreground));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    @apply px-4 py-3 transition-all duration-200;
+    color: var(--foreground);
   }
-
   .input::placeholder {
-    color: #a3a3a3;
+    color: #9CA3AF;
   }
-
   .input:focus {
     outline: none;
-    border-color: rgb(var(--primary));
-    box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(24, 68, 166, 0.1);
   }
 
   .label {
     @apply block text-sm font-medium text-gray-700 mb-2;
   }
 
-  /* Status Badges */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
+  .badge-success { @apply bg-green-50 text-green-700 border border-green-200; }
+  .badge-warning { @apply bg-yellow-50 text-yellow-700 border border-yellow-200; }
+  .badge-error { @apply bg-red-50 text-red-700 border border-red-200; }
+  .badge-info { @apply bg-blue-50 text-blue-700 border border-blue-200; }
+  .badge-neutral { @apply bg-gray-50 text-gray-700 border border-gray-200; }
+  .badge-popular { @apply bg-blue-600 text-white border border-blue-600; }
+  .badge-coming-soon { @apply text-amber-700 border border-amber-300; background-color: #FFFBEB; }
 
-  .badge-success {
-    @apply bg-green-100 text-green-800 border border-green-300;
-  }
-
-  .badge-warning {
-    @apply bg-yellow-100 text-yellow-800 border border-yellow-300;
-  }
-
-  .badge-error {
-    @apply bg-red-100 text-red-800 border border-red-300;
-  }
-
-  .badge-info {
-    @apply bg-blue-100 text-blue-800 border border-blue-300;
-  }
-
-  .badge-neutral {
-    @apply bg-gray-100 text-gray-800 border border-gray-300;
-  }
-
-  /* Navigation */
   .nav-link {
     @apply text-gray-600 hover:text-gray-900 transition-colors duration-200;
   }
-
   .nav-link-active {
     font-weight: 500;
-    color: rgb(var(--primary));
+    color: var(--primary);
   }
 
-  /* Sidebar */
   .sidebar-link {
     @apply flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200;
   }
-
   .sidebar-link-active {
-    background-color: rgba(0, 128, 96, 0.1);
-    color: rgb(var(--primary));
-    border-right: 2px solid rgb(var(--primary));
-    border-radius: 0.5rem;
+    @apply bg-blue-50 border-r-2;
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .section-divider {
+    @apply my-12;
+    border: none;
+    height: 1px;
+    background-color: rgba(229, 231, 235, 0.6);
   }
 }
 
 @layer utilities {
   .gradient-primary {
-    background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(0, 150, 110) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, #2563EB 100%);
   }
-
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(to right, rgb(var(--primary)), rgb(var(--secondary)));
-  }
-
-  .glass {
-    @apply bg-white/30 backdrop-blur-lg border border-white/10;
-  }
-
-  /* Hover elevation utilities */
-  .hover-elevate {
-    position: relative;
-    transition: all 0.2s ease;
-  }
-
-  .hover-elevate:hover {
-    background-color: var(--elevate-1);
-  }
-
-  .hover-elevate-2:hover {
-    background-color: var(--elevate-2);
+    background-image: linear-gradient(to right, var(--primary), #0000FF);
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d0d0d0;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
-}
-
-/* Selection */
-::selection {
-  background: rgba(0, 128, 96, 0.3);
-  color: inherit;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #F9FAFB; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+::selection { background: rgba(24, 68, 166, 0.2); color: inherit; }

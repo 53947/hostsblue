@@ -25,31 +25,31 @@ export function LoginPage() {
               <span className="logo-blue">blue</span>
             </span>
           </Link>
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
-          <p className="text-zinc-400">Sign in to manage your domains and hosting</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h1>
+          <p className="text-gray-500">Sign in to manage your domains and hosting</p>
         </div>
 
         {/* Form */}
-        <div className="card">
+        <div className="bg-white border border-gray-200 rounded-[7px] p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {loginError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-[7px] text-red-600 text-sm">
                 {(loginError as Error).message}
               </div>
             )}
 
             <div>
-              <label className="label" htmlFor="email">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input pl-12"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-[7px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1844A6] focus:border-transparent"
                   placeholder="you@example.com"
                   required
                 />
@@ -57,24 +57,24 @@ export function LoginPage() {
             </div>
 
             <div>
-              <label className="label" htmlFor="password">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input pl-12 pr-12"
+                  className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-[7px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1844A6] focus:border-transparent"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-400"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -82,11 +82,11 @@ export function LoginPage() {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-zinc-400 cursor-pointer">
-                <input type="checkbox" className="rounded border-zinc-700 bg-zinc-800 text-purple-500" />
+              <label className="flex items-center gap-2 text-gray-500 cursor-pointer">
+                <input type="checkbox" className="rounded border-gray-300 text-[#1844A6] focus:ring-[#1844A6]" />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-purple-400 hover:text-purple-300">
+              <Link to="/forgot-password" className="text-[#1844A6] hover:text-[#133A8A] font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -94,7 +94,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={isLoginLoading}
-              className="btn-primary w-full flex items-center justify-center gap-2"
+              className="w-full bg-[#1844A6] hover:bg-[#133A8A] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2"
             >
               {isLoginLoading ? (
                 <>
@@ -109,9 +109,9 @@ export function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-zinc-500 text-sm mt-6">
+        <p className="text-center text-gray-500 text-sm mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-purple-400 hover:text-purple-300 font-medium">
+          <Link to="/register" className="text-[#1844A6] hover:text-[#133A8A] font-medium">
             Create one
           </Link>
         </p>
