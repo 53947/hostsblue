@@ -26,3 +26,6 @@ run = "npm start"
 [userenv.shared]
 PORT = "5000"
 
+[userenv.development]
+NODE_ENV = "development"
+
