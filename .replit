@@ -18,11 +18,11 @@ externalPort = 80
 [versionControl]
 enabled = true
 
-[workflows]
-
-[[workflows.workflow]]
+[[workflows]]
 name = "Start application"
 author = "agent"
+
+[workflows.workflow]
 runCommand = "npm start"
 
 [userenv]
