@@ -1,0 +1,52 @@
+# REPLIT DEPLOYMENT FIX — DO NOT MODIFY ANY CODE
+
+## CRITICAL INSTRUCTION: DO NOT TOUCH THE CODE
+
+This project was built externally using Claude Code and pushed via GitHub. The code compiles cleanly — zero TypeScript errors, clean Vite production build (1554 modules). The code is NOT the problem.
+
+**DO NOT:**
+- Edit, modify, or rewrite any .ts, .tsx, .css, .html, or .json source files
+- Change any imports, components, routes, or logic
+- "Improve" or "refactor" anything
+- Add new files to client/ or server/
+- Touch package.json dependencies
+
+**DO:**
+- Fix the Replit deployment configuration ONLY
+- Ensure the app builds and runs correctly on Replit
+- Fix any Replit-specific environment issues (ports, database, build commands, run commands)
+
+---
+
+## WHAT NEEDS TO HAPPEN
+
+1. **PostgreSQL** — Ensure the Replit PostgreSQL database is provisioned and DATABASE_URL is set in Secrets/Environment
+2. **Build** — Run `npm install` then `npm run build` — the Vite build should succeed
+3. **Run** — The production server starts with `npm start` (or `npm run dev` for development)
+4. **Port** — The Express server listens on the port Replit expects (check .replit config and ensure the server binds to 0.0.0.0 on the correct port)
+5. **.replit config** — Verify the run command, build command, and port mapping are correct for a Node.js + Vite + Express app
+6. **Node version** — Ensure Node.js 20+ is being used
+7. **Environment variables** — Check that all required env vars from .env.example are set in Replit Secrets
+
+---
+
+## WHAT THE APP IS
+
+- Frontend: React + Vite + TypeScript + Tailwind (builds to dist/)
+- Backend: Express serves the API routes AND the built frontend as static files
+- Database: PostgreSQL via Drizzle ORM
+- The Express server serves the Vite build output from dist/ in production
+
+---
+
+## LIKELY ISSUES
+
+- .replit run command might be wrong — should run the Express server, not Vite dev server
+- Port mismatch — Replit assigns a port, Express needs to use it (process.env.PORT or 5000)
+- DATABASE_URL not set in Replit Secrets
+- Node modules not installed — run npm install first
+- Build output missing — need to run npm run build before npm start
+
+---
+
+## AGAIN: DO NOT MODIFY ANY SOURCE CODE. CONFIGURATION AND ENVIRONMENT ONLY.
