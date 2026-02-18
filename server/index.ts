@@ -117,7 +117,7 @@ console.log(`[STARTUP] index.html exists: ${fs.existsSync(path.join(distPath, 'i
 app.use(express.static(distPath));
 
 // SPA fallback: serve index.html for all non-API routes
-app.get('*', (req, res) => {
+app.get('/{*path}', (req, res) => {
   const indexPath = path.join(distPath, 'index.html');
   console.log(`[REQUEST] ${req.method} ${req.path}`);
   
