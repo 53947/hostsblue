@@ -43,19 +43,19 @@
     font-family: 'Archivo Semi Expanded', 'Archivo', sans-serif;
     font-weight: 800;
     color: #008060;
-    text-shadow: 1px 1px 0px #09080E;
+    text-shadow: 0.5px 0.5px 0px #09080E;
   }
   .logo-blue {
     font-family: 'Archivo Narrow', 'Archivo', sans-serif;
     font-weight: 800;
     color: #0000FF;
-    text-shadow: 1px 1px 0px #09080E;
+    text-shadow: 0.5px 0.5px 0px #09080E;
   }
   .logo-com {
     font-family: 'Archivo Narrow', 'Archivo', sans-serif;
     font-weight: 800;
     color: #008060;
-    text-shadow: 1px 1px 0px #09080E;
+    text-shadow: 0.5px 0.5px 0px #09080E;
   }
 
   .btn-primary {
