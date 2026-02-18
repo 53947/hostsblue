@@ -17,7 +17,7 @@ export function Header() {
               src="/HostsBlue_Logo_Image.png"
               alt=""
               className="h-8 w-auto"
-              style={{ filter: 'drop-shadow(1px 1px 0px #000)' }}
+              style={{ filter: 'drop-shadow(1px 1px 0px #09080E)' }}
             />
             <span className="text-2xl leading-none">
               <span className="logo-hosts">hosts</span>
