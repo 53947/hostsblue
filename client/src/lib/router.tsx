@@ -33,6 +33,17 @@ import { AboutPage } from '@/pages/about/index';
 import { SupportPage as PublicSupportPage } from '@/pages/support/index';
 import { ForgotPasswordPage } from '@/pages/auth/forgot-password';
 
+// Admin Pages
+import { AdminLoginPage } from '@/pages/admin/login';
+import { AdminLayout } from '@/pages/admin/layout';
+import { AdminOverviewPage } from '@/pages/admin/overview';
+import { AdminCustomersPage } from '@/pages/admin/customers';
+import { AdminOrdersPage } from '@/pages/admin/orders';
+import { AdminDomainsPage } from '@/pages/admin/domains';
+import { AdminHostingPage } from '@/pages/admin/hosting';
+import { AdminSupportPage } from '@/pages/admin/support';
+import { AdminSettingsPage } from '@/pages/admin/settings';
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -76,6 +87,23 @@ export const router = createBrowserRouter([
       { path: 'billing', element: <BillingPage /> },
       { path: 'support', element: <SupportPage /> },
       { path: 'settings', element: <SettingsPage /> },
+    ],
+  },
+  {
+    path: '/admin/login',
+    element: <AdminLoginPage />,
+  },
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      { index: true, element: <AdminOverviewPage /> },
+      { path: 'customers', element: <AdminCustomersPage /> },
+      { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'domains', element: <AdminDomainsPage /> },
+      { path: 'hosting', element: <AdminHostingPage /> },
+      { path: 'support', element: <AdminSupportPage /> },
+      { path: 'settings', element: <AdminSettingsPage /> },
     ],
   },
   {

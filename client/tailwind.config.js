@@ -12,7 +12,7 @@ export default {
       colors: {
         hostsblue: {
           'teal': '#064A6C',       // Primary: buttons, links, active states
-          'teal-hover': '#053C58', // Primary hover
+          'teal-hover': '#053A55', // Primary hover
           'blue-deep': '#1844A6',  // Secondary: dark sections, secondary buttons
           'blue-pure': '#0000FF',
           'green': '#008060',

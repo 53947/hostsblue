@@ -40,8 +40,12 @@ export function DashboardLayout() {
       <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-gray-200">
-          <Link to="/" className="inline-block">
-            <img src="/HostsBlue_Logo_text_and_image.png" alt="HostsBlue" className="h-7" />
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/HostsBlue_Logo_Image.png" alt="hostsblue" className="h-6 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
+            <span className="text-xl leading-none">
+              <span className="logo-hosts">hosts</span>
+              <span className="logo-blue">blue</span>
+            </span>
           </Link>
         </div>
 
@@ -112,8 +116,12 @@ export function DashboardLayout() {
         {/* Mobile Header */}
         <header className="lg:hidden bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
-            <Link to="/">
-              <img src="/HostsBlue_Logo_text_and_image.png" alt="HostsBlue" className="h-6" />
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/HostsBlue_Logo_Image.png" alt="hostsblue" className="h-5 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
+              <span className="text-lg leading-none">
+                <span className="logo-hosts">hosts</span>
+                <span className="logo-blue">blue</span>
+              </span>
             </Link>
           </div>
         </header>

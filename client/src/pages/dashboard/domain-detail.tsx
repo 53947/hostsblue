@@ -24,7 +24,7 @@ export function DomainDetailPage() {
     return (
       <div className="bg-white border border-gray-200 rounded-[7px] text-center py-16 px-6">
         <h3 className="text-lg font-medium text-gray-900 mb-2">Domain not found</h3>
-        <Link to="/dashboard/domains" className="text-[#064A6C] hover:text-[#053C58]">
+        <Link to="/dashboard/domains" className="text-[#064A6C] hover:text-[#053A55]">
           Back to domains
         </Link>
       </div>

@@ -78,7 +78,7 @@ export function BillingPage() {
           <p className="text-gray-500 text-sm">No payment methods saved</p>
           <button
             onClick={() => alert('Payment method management coming soon')}
-            className="text-[#064A6C] hover:text-[#053C58] text-sm mt-3 font-medium"
+            className="text-[#064A6C] hover:text-[#053A55] text-sm mt-3 font-medium"
           >
             Add Payment Method
           </button>
@@ -89,7 +89,7 @@ export function BillingPage() {
       <div className="bg-white border border-gray-200 rounded-[7px] p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Payment History</h2>
-          <Link to="/dashboard/orders" className="text-[#064A6C] text-sm hover:text-[#053C58]">
+          <Link to="/dashboard/orders" className="text-[#064A6C] text-sm hover:text-[#053A55]">
             View All Orders
           </Link>
         </div>
@@ -128,7 +128,7 @@ export function BillingPage() {
                     <td className="py-4">
                       <Link
                         to={`/dashboard/orders/${order.uuid}`}
-                        className="text-[#064A6C] hover:text-[#053C58] flex items-center gap-1 text-sm"
+                        className="text-[#064A6C] hover:text-[#053A55] flex items-center gap-1 text-sm"
                       >
                         View
                         <ExternalLink className="w-3 h-3" />

@@ -24,7 +24,7 @@ export function CheckoutCancelPage() {
           {orderUuid && (
             <Link
               to={`/checkout?order=${orderUuid}`}
-              className="w-full bg-[#064A6C] hover:bg-[#053C58] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[#064A6C] hover:bg-[#053A55] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2"
             >
               <CreditCard className="w-4 h-4" />
               Try Again

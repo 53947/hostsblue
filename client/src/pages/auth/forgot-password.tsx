@@ -51,7 +51,7 @@ export function ForgotPasswordPage() {
                   setIsSuccess(false);
                   setEmail('');
                 }}
-                className="text-[#064A6C] hover:text-[#053C58] text-sm font-medium"
+                className="text-[#064A6C] hover:text-[#053A55] text-sm font-medium"
               >
                 Send again with a different email
               </button>
@@ -79,7 +79,7 @@ export function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#064A6C] hover:bg-[#053C58] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-[#064A6C] hover:bg-[#053A55] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -96,7 +96,7 @@ export function ForgotPasswordPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-500 text-sm mt-6">
-          <Link to="/login" className="text-[#064A6C] hover:text-[#053C58] font-medium inline-flex items-center gap-1">
+          <Link to="/login" className="text-[#064A6C] hover:text-[#053A55] font-medium inline-flex items-center gap-1">
             <ArrowLeft className="w-4 h-4" /> Back to sign in
           </Link>
         </p>

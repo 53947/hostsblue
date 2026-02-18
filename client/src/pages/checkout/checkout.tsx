@@ -145,7 +145,7 @@ export function CheckoutPage() {
               <button
                 onClick={handleCheckout}
                 disabled={isProcessing}
-                className="w-full bg-[#064A6C] hover:bg-[#053C58] text-white font-medium py-4 rounded-[7px] transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-[#064A6C] hover:bg-[#053A55] text-white font-medium py-4 rounded-[7px] transition-colors flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <>

@@ -180,7 +180,7 @@ export function DashboardPage() {
       <div className="bg-white border border-gray-200 rounded-[7px] p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-          <Link to="/dashboard/orders" className="text-[#064A6C] text-sm hover:text-[#053C58]">
+          <Link to="/dashboard/orders" className="text-[#064A6C] text-sm hover:text-[#053A55]">
             View All
           </Link>
         </div>

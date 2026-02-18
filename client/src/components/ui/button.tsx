@@ -18,7 +18,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       lg: 'px-8 py-4 text-lg',
     };
     const variants = {
-      primary: 'bg-[#064A6C] hover:bg-[#053C58] text-white shadow-sm',
+      primary: 'bg-[#064A6C] hover:bg-[#053A55] text-white shadow-sm',
       secondary: 'border border-[#064A6C] text-[#064A6C] hover:bg-[#064A6C] hover:text-white',
       outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400',
       ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',

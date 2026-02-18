@@ -159,16 +159,16 @@ export function RegisterPage() {
               />
               <span>
                 I agree to the{' '}
-                <a href="#" className="text-[#064A6C] hover:text-[#053C58]">Terms of Service</a>
+                <a href="#" className="text-[#064A6C] hover:text-[#053A55]">Terms of Service</a>
                 {' '}and{' '}
-                <a href="#" className="text-[#064A6C] hover:text-[#053C58]">Privacy Policy</a>
+                <a href="#" className="text-[#064A6C] hover:text-[#053A55]">Privacy Policy</a>
               </span>
             </label>
 
             <button
               type="submit"
               disabled={isRegisterLoading || !acceptTerms}
-              className="w-full bg-[#064A6C] hover:bg-[#053C58] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#064A6C] hover:bg-[#053A55] text-white font-medium py-3 rounded-[7px] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isRegisterLoading ? (
                 <>
@@ -185,7 +185,7 @@ export function RegisterPage() {
         {/* Footer */}
         <p className="text-center text-gray-500 text-sm mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-[#064A6C] hover:text-[#053C58] font-medium">
+          <Link to="/login" className="text-[#064A6C] hover:text-[#053A55] font-medium">
             Sign in
           </Link>
         </p>

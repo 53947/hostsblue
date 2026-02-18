@@ -24,7 +24,7 @@ export function HostingDetailPage() {
     return (
       <div className="bg-white border border-gray-200 rounded-[7px] text-center py-16 px-6">
         <h3 className="text-lg font-medium text-gray-900 mb-2">Hosting account not found</h3>
-        <Link to="/dashboard/hosting" className="text-[#064A6C] hover:text-[#053C58]">
+        <Link to="/dashboard/hosting" className="text-[#064A6C] hover:text-[#053A55]">
           Back to hosting
         </Link>
       </div>
@@ -115,7 +115,7 @@ export function HostingDetailPage() {
                   href={`https://${account.primaryDomain}/wp-admin`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#064A6C] flex items-center gap-1 hover:text-[#053C58]"
+                  className="text-[#064A6C] flex items-center gap-1 hover:text-[#053A55]"
                 >
                   Open WP Admin
                   <ExternalLink className="w-3 h-3" />
