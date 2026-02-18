@@ -181,8 +181,10 @@ export function HostingPlansPage() {
         ))}
       </div>
 
+      <hr className="section-divider" />
+
       {/* Features Comparison */}
-      <div className="mt-20">
+      <div className="mt-0 py-16">
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
           All Plans Include
         </h2>

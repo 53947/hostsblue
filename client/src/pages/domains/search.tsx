@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { domainApi, orderApi } from '@/lib/api';
-import { Search, Loader2, Check, X, Globe, ShoppingCart } from 'lucide-react';
+import { Search, Loader2, Check, X, Globe, ShoppingCart, Shield, ArrowRight, CheckCircle, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function DomainSearchPage() {
@@ -217,6 +217,125 @@ export function DomainSearchPage() {
           </div>
         </div>
       </div>
+
+      {/* Divider */}
+      <hr className="section-divider" />
+
+      {/* TLD Pricing Table */}
+      <section className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-8">Domain Pricing</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { tld: '.com', price: '$12.99/yr' },
+            { tld: '.net', price: '$14.99/yr' },
+            { tld: '.org', price: '$12.99/yr' },
+            { tld: '.io', price: '$39.99/yr' },
+            { tld: '.co', price: '$29.99/yr' },
+            { tld: '.dev', price: '$16.99/yr' },
+            { tld: '.app', price: '$16.99/yr' },
+            { tld: '.ai', price: '$49.99/yr' },
+          ].map((item) => (
+            <div
+              key={item.tld}
+              className="bg-white border border-gray-200 rounded-[7px] p-4"
+            >
+              <p className="text-lg font-bold text-gray-900">{item.tld}</p>
+              <p className="text-sm text-gray-500 mt-1">{item.price}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Divider */}
+      <hr className="section-divider" />
+
+      {/* Domain Transfer */}
+      <section className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Transfer Your Domain</h2>
+        <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
+          Already own a domain? Transfer it to HostsBlue for centralized management, better pricing, and free WHOIS privacy.
+        </p>
+        <div className="grid sm:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white border border-gray-200 rounded-[7px] p-6 flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-[#064A6C]/10 flex items-center justify-center mb-4">
+              <Lock className="w-6 h-6 text-[#064A6C]" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Step 1</p>
+            <p className="text-sm text-gray-500">Unlock your domain</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-[7px] p-6 flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-[#064A6C]/10 flex items-center justify-center mb-4">
+              <ArrowRight className="w-6 h-6 text-[#064A6C]" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Step 2</p>
+            <p className="text-sm text-gray-500">Get authorization code</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-[7px] p-6 flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-[#064A6C]/10 flex items-center justify-center mb-4">
+              <ArrowRight className="w-6 h-6 text-[#064A6C]" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Step 3</p>
+            <p className="text-sm text-gray-500">Start transfer</p>
+          </div>
+        </div>
+        <a
+          href="/register"
+          className="inline-flex items-center gap-2 bg-[#064A6C] hover:bg-[#053C58] text-white font-medium px-6 py-3 rounded-[7px] transition-colors"
+        >
+          Start Transfer
+          <ArrowRight className="w-4 h-4" />
+        </a>
+      </section>
+
+      {/* Divider */}
+      <hr className="section-divider" />
+
+      {/* WHOIS Privacy & DNS Features */}
+      <section>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Free WHOIS Privacy */}
+          <div className="bg-white border border-gray-200 rounded-[7px] p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#064A6C]/10 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-[#064A6C]" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Free WHOIS Privacy</h3>
+            </div>
+            <p className="text-gray-500 text-sm mb-4">
+              Protect your personal information with free WHOIS privacy on all domains.
+            </p>
+            <ul className="space-y-3">
+              {['Hide personal info', 'Reduce spam', 'Prevent identity theft', 'Included free'].map((feature) => (
+                <li key={feature} className="flex items-center gap-2 text-sm text-gray-700">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Advanced DNS Management */}
+          <div className="bg-white border border-gray-200 rounded-[7px] p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#064A6C]/10 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-[#064A6C]" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Advanced DNS Management</h3>
+            </div>
+            <p className="text-gray-500 text-sm mb-4">
+              Full control over your domain's DNS records with our intuitive management tools.
+            </p>
+            <ul className="space-y-3">
+              {['A/AAAA/CNAME/MX records', 'Custom TTL', 'DNS templates', 'Instant propagation'].map((feature) => (
+                <li key={feature} className="flex items-center gap-2 text-sm text-gray-700">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

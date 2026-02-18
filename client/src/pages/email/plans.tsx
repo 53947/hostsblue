@@ -74,6 +74,30 @@ export function EmailPlansPage() {
           </div>
         ))}
       </div>
+
+      <hr className="section-divider" />
+
+      {/* All Plans Include */}
+      <div className="py-16">
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">All Plans Include</h2>
+        <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+          {[
+            'Custom domain email',
+            'Spam & virus filtering',
+            'Mobile access (iOS/Android)',
+            'Webmail interface',
+            'IMAP & POP3 support',
+            'Auto-responders',
+            'Email forwarding',
+            '99.9% uptime SLA',
+          ].map((feature) => (
+            <div key={feature} className="flex items-center gap-2 text-gray-600">
+              <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+              <span className="text-sm">{feature}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
