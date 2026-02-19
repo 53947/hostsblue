@@ -39,7 +39,7 @@ export function Header() {
         <div className="flex items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 mr-8">
-            <img src="/HostsBlue_Logo_Image.png" alt="hostsblue" className="h-7 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
+            <img src="/HostsBlue_Logo_Image.png?v=2" alt="hostsblue" className="h-7 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
             <span className="text-2xl leading-none flex items-center">
               <span className="logo-hosts">hosts</span>
               <span className="logo-blue">blue</span>

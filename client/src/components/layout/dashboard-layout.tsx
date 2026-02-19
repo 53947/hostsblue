@@ -41,7 +41,7 @@ export function DashboardLayout() {
         {/* Logo */}
         <div className="p-6 border-b border-gray-200">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/HostsBlue_Logo_Image.png" alt="hostsblue" className="h-6 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
+            <img src="/HostsBlue_Logo_Image.png?v=2" alt="hostsblue" className="h-6 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
             <span className="text-xl leading-none">
               <span className="logo-hosts">hosts</span>
               <span className="logo-blue">blue</span>
@@ -117,7 +117,7 @@ export function DashboardLayout() {
         <header className="lg:hidden bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/HostsBlue_Logo_Image.png" alt="hostsblue" className="h-5 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
+              <img src="/HostsBlue_Logo_Image.png?v=2" alt="hostsblue" className="h-5 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
               <span className="text-lg leading-none">
                 <span className="logo-hosts">hosts</span>
                 <span className="logo-blue">blue</span>

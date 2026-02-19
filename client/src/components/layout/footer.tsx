@@ -8,7 +8,7 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-3">
-              <img src="/HostsBlue_Logo_Image.png" alt="hostsblue" className="h-6 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
+              <img src="/HostsBlue_Logo_Image.png?v=2" alt="hostsblue" className="h-6 w-auto" style={{ filter: 'drop-shadow(0.5px 0.5px 0px #09080E)' }} />
               <span className="text-xl leading-none">
                 <span className="logo-hosts">hosts</span>
                 <span className="logo-blue">blue</span>
