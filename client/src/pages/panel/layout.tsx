@@ -45,7 +45,7 @@ export function PanelLayout() {
         {/* Logo */}
         <div className="p-6 border-b border-[#E5E7EB]">
           <Link to="/panel" className="flex items-center gap-2">
-            <img src="/HostsBlue_Logo_Image_Trans.png" alt="HostsBlue" className="h-6" />
+            <img src="/HostsBlue_Logo_Image_Trans.png" alt="hostsblue" className="h-6" />
             <span className="text-xl">
               <span className="logo-hosts">hosts</span>
               <span className="logo-blue">blue</span>

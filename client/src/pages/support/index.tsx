@@ -17,8 +17,8 @@ const faqs = [
     a: 'Use our domain search to find your perfect domain name. Once you find an available domain, add it to your cart and complete the checkout process. Your domain will be activated instantly.',
   },
   {
-    q: 'Can I transfer my existing domain to HostsBlue?',
-    a: 'Yes. You can transfer domains from any registrar to HostsBlue. Go to your dashboard, select "Transfer Domain," enter your domain name and authorization code, and we will handle the rest. Transfers typically complete within 5-7 days.',
+    q: 'Can I transfer my existing domain to hostsblue?',
+    a: 'Yes. You can transfer domains from any registrar to hostsblue. Go to your dashboard, select "Transfer Domain," enter your domain name and authorization code, and we will handle the rest. Transfers typically complete within 5-7 days.',
   },
   {
     q: 'What hosting plan should I choose?',
@@ -38,7 +38,7 @@ const faqs = [
   },
   {
     q: 'How do I set up email for my domain?',
-    a: 'Once you have a domain registered with HostsBlue, choose an email plan and we will configure the DNS records automatically. You will be able to access your email through webmail, mobile apps, or desktop clients.',
+    a: 'Once you have a domain registered with hostsblue, choose an email plan and we will configure the DNS records automatically. You will be able to access your email through webmail, mobile apps, or desktop clients.',
   },
   {
     q: 'How do I contact support?',

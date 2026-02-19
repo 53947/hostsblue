@@ -25,7 +25,7 @@ export function PanelLoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4">
-            <img src="/HostsBlue_Logo_Image_Trans.png" alt="HostsBlue" className="h-8" />
+            <img src="/HostsBlue_Logo_Image_Trans.png" alt="hostsblue" className="h-8" />
             <span className="text-3xl">
               <span className="logo-hosts">hosts</span>
               <span className="logo-blue">blue</span>

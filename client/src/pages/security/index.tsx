@@ -116,7 +116,7 @@ const sitelockPlans = [
 const faqs = [
   {
     q: 'Do I need an SSL certificate?',
-    a: 'Yes. An SSL certificate encrypts data between your visitors and your website, protecting sensitive information. Search engines also rank HTTPS sites higher. All HostsBlue hosting plans include a free DV SSL certificate.',
+    a: 'Yes. An SSL certificate encrypts data between your visitors and your website, protecting sensitive information. Search engines also rank HTTPS sites higher. All hostsblue hosting plans include a free DV SSL certificate.',
   },
   {
     q: 'What is the difference between DV, OV, and EV SSL?',

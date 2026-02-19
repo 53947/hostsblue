@@ -65,7 +65,7 @@ const emailPlans = [
 const faqs = [
   {
     q: 'Can I use my own domain for email?',
-    a: 'Yes. All email plans use your custom domain (e.g., you@yourbusiness.com). If you already have a domain registered with HostsBlue, we configure the DNS records automatically. If your domain is elsewhere, we provide simple DNS instructions.',
+    a: 'Yes. All email plans use your custom domain (e.g., you@yourbusiness.com). If you already have a domain registered with hostsblue, we configure the DNS records automatically. If your domain is elsewhere, we provide simple DNS instructions.',
   },
   {
     q: 'What email clients are supported?',

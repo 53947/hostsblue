@@ -114,7 +114,7 @@ export function AdminSettingsPage() {
 
           {/* SwipesBlue */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">SwipesBlue API Key</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">swipesblue API Key</label>
             <div className="relative">
               <input
                 type={showSwipesBlue ? 'text' : 'password'}

@@ -6,7 +6,7 @@ export function AboutPage() {
     <div className="max-w-7xl mx-auto px-4 py-16">
       {/* Hero */}
       <div className="text-center mb-16 max-w-3xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-[800] text-gray-900 mb-4">About HostsBlue</h1>
+        <h1 className="text-4xl md:text-5xl font-[800] text-gray-900 mb-4">About hostsblue</h1>
         <p className="text-lg text-[#4B5563]">
           We are building the next generation of web infrastructure tools, making it simple for businesses of every size to establish and grow their online presence.
         </p>
@@ -19,13 +19,13 @@ export function AboutPage() {
         <h2 className="text-2xl font-[800] text-gray-900 mb-6">Our Story</h2>
         <div className="space-y-4 text-[#4B5563] leading-relaxed">
           <p>
-            HostsBlue was founded on a simple belief: managing your web presence should not be complicated. Too many businesses struggle with fragmented tools, confusing interfaces, and unreliable services just to get online.
+            hostsblue was founded on a simple belief: managing your web presence should not be complicated. Too many businesses struggle with fragmented tools, confusing interfaces, and unreliable services just to get online.
           </p>
           <p>
             We set out to create a unified platform where domain registration, hosting, email, and security all work together seamlessly. Every product we build is designed with simplicity, reliability, and performance at its core.
           </p>
           <p>
-            From individual creators launching their first website to agencies managing hundreds of client domains, HostsBlue provides the tools and support needed to succeed online. Our team is dedicated to removing the barriers between great ideas and the web presence they deserve.
+            From individual creators launching their first website to agencies managing hundreds of client domains, hostsblue provides the tools and support needed to succeed online. Our team is dedicated to removing the barriers between great ideas and the web presence they deserve.
           </p>
         </div>
       </section>
@@ -159,7 +159,7 @@ export function AboutPage() {
         <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-[7px] p-12">
           <h2 className="text-2xl font-[800] text-gray-900 mb-4">Ready to Get Started?</h2>
           <p className="text-[#4B5563] mb-8 max-w-lg mx-auto">
-            Join thousands of businesses that trust HostsBlue for their web presence. Create your account and start building today.
+            Join thousands of businesses that trust hostsblue for their web presence. Create your account and start building today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

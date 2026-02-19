@@ -118,7 +118,7 @@ export function DomainDetailPage() {
             <>
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
                 <p className="text-green-700 text-sm">
-                  Using HostsBlue Nameservers
+                  Using hostsblue Nameservers
                 </p>
               </div>
               <ul className="space-y-2">

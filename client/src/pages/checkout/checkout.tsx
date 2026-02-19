@@ -102,7 +102,7 @@ export function CheckoutPage() {
                   <span className="text-white font-bold text-xs">SB</span>
                 </div>
                 <div>
-                  <p className="text-gray-900 font-medium">SwipesBlue Secure Checkout</p>
+                  <p className="text-gray-900 font-medium">swipesblue Secure Checkout</p>
                   <p className="text-sm text-gray-500">Credit Card, Debit Card, or Bank Transfer</p>
                 </div>
                 <Lock className="w-5 h-5 text-green-500 ml-auto" />

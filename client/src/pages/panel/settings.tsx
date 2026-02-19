@@ -14,7 +14,7 @@ export function PanelSettingsPage() {
   const [showWPMUDEV, setShowWPMUDEV] = useState(false);
   const [showSwipesBlue, setShowSwipesBlue] = useState(false);
 
-  const [companyName, setCompanyName] = useState('HostsBlue');
+  const [companyName, setCompanyName] = useState('hostsblue');
   const [supportEmail, setSupportEmail] = useState('support@hostsblue.com');
   const [supportPhone, setSupportPhone] = useState('+1 (800) 555-0199');
 
@@ -82,7 +82,7 @@ export function PanelSettingsPage() {
 
           {/* SwipesBlue */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">SwipesBlue API Key</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">swipesblue API Key</label>
             <div className="relative">
               <input
                 type={showSwipesBlue ? 'text' : 'password'}

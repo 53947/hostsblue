@@ -98,7 +98,7 @@ const faqs = [
   },
   {
     q: 'Can I use my own domain name?',
-    a: 'Yes. All plans support custom domain names. If you already have a domain with HostsBlue, you can connect it in one click. External domains work too with simple DNS updates.',
+    a: 'Yes. All plans support custom domain names. If you already have a domain with hostsblue, you can connect it in one click. External domains work too with simple DNS updates.',
   },
   {
     q: 'Do I need coding skills?',

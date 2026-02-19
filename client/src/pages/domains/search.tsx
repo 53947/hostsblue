@@ -253,7 +253,7 @@ export function DomainSearchPage() {
       <section className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Transfer Your Domain</h2>
         <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
-          Already own a domain? Transfer it to HostsBlue for centralized management, better pricing, and free WHOIS privacy.
+          Already own a domain? Transfer it to hostsblue for centralized management, better pricing, and free WHOIS privacy.
         </p>
         <div className="grid sm:grid-cols-3 gap-6 mb-8">
           <div className="bg-white border border-gray-200 rounded-[7px] p-6 flex flex-col items-center">
