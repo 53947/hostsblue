@@ -903,11 +903,23 @@ export const sitelockAccounts = pgTable('sitelock_accounts', {
   lastScanResult: jsonb('last_scan_result'),
   autoRenew: boolean('auto_renew').default(true).notNull(),
   subscriptionEndDate: timestamp('subscription_end_date'),
+
+  // SiteLock partner integration
+  sitelockAccountId: varchar('sitelock_account_id', { length: 100 }),
+  sitelockPlanId: varchar('sitelock_plan_id', { length: 50 }),
+  contactEmail: varchar('contact_email', { length: 255 }),
+  trustSealEnabled: boolean('trust_seal_enabled').default(false),
+  firewallEnabled: boolean('firewall_enabled').default(false),
+  malwareFound: boolean('malware_found').default(false),
+  riskLevel: varchar('risk_level', { length: 20 }).default('low'),
+  monthlyPrice: integer('monthly_price'),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at'),
 }, (table) => ({
   customerIdx: index('sitelock_customer_idx').on(table.customerId),
+  sitelockIdx: index('sitelock_account_id_idx').on(table.sitelockAccountId),
 }));
 
 export const sitelockAccountsRelations = relations(sitelockAccounts, ({ one }) => ({
