@@ -4,12 +4,16 @@
  * Handles success, failure, and refund scenarios
  */
 
+import crypto from 'crypto';
 import { eq, and } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Resend } from 'resend';
 import * as schema from '../../shared/schema.js';
 import { OpenSRSIntegration } from './openrs-integration.js';
 import { WPMUDevIntegration } from './wpmudev-integration.js';
+import { OpenSRSEmailIntegration } from './opensrs-email-integration.js';
+import { OpenSRSSSLIntegration } from './opensrs-ssl-integration.js';
+import { SiteLockIntegration } from './sitelock-integration.js';
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@hostsblue.com';
 
@@ -27,15 +31,24 @@ export class OrderOrchestrator {
   private db: NodePgDatabase<typeof schema>;
   private openSRS: OpenSRSIntegration;
   private wpmudev: WPMUDevIntegration;
+  private opensrsEmail: OpenSRSEmailIntegration;
+  private opensrsSSL: OpenSRSSSLIntegration;
+  private sitelock: SiteLockIntegration;
 
   constructor(
     db: NodePgDatabase<typeof schema>,
     openSRS: OpenSRSIntegration,
-    wpmudev: WPMUDevIntegration
+    wpmudev: WPMUDevIntegration,
+    opensrsEmail: OpenSRSEmailIntegration,
+    opensrsSSL: OpenSRSSSLIntegration,
+    sitelockService: SiteLockIntegration
   ) {
     this.db = db;
     this.openSRS = openSRS;
     this.wpmudev = wpmudev;
+    this.opensrsEmail = opensrsEmail;
+    this.opensrsSSL = opensrsSSL;
+    this.sitelock = sitelockService;
   }
 
   /**
@@ -196,6 +209,22 @@ export class OrderOrchestrator {
 
         case 'privacy_protection':
           result = await this.enablePrivacy(tx, item);
+          break;
+
+        case 'domain_renewal':
+          result = await this.renewDomainItem(tx, item, customer);
+          break;
+
+        case 'email_service':
+          result = await this.provisionEmail(tx, item, customer);
+          break;
+
+        case 'ssl_certificate':
+          result = await this.orderSSL(tx, item, customer);
+          break;
+
+        case 'sitelock':
+          result = await this.provisionSiteLock(tx, item, customer);
           break;
 
         default:
@@ -488,6 +517,165 @@ export class OrderOrchestrator {
     // This would be called after domain registration
     // For now, privacy is handled during registration
     return { success: true };
+  }
+
+  /**
+   * Renew a domain registration
+   */
+  private async renewDomainItem(
+    tx: any,
+    item: schema.OrderItem,
+    customer: schema.Customer
+  ): Promise<any> {
+    const config = item.configuration as Record<string, any>;
+    const domainName = config.domainName || `${config.domain}${config.tld}`;
+    const years = Math.ceil((item.termMonths ?? 12) / 12);
+
+    const renewResult = await this.openSRS.renewDomain(domainName, years);
+
+    if (!renewResult.success) {
+      throw new Error(`Domain renewal failed for ${domainName}`);
+    }
+
+    // Update existing domain record if we have a reference
+    if (config.domainId) {
+      await tx.update(schema.domains)
+        .set({
+          expiryDate: renewResult.newExpiryDate ? new Date(renewResult.newExpiryDate) : undefined,
+          status: 'active',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.domains.id, config.domainId));
+    }
+
+    return { externalId: renewResult.orderId };
+  }
+
+  /**
+   * Provision email service
+   */
+  private async provisionEmail(
+    tx: any,
+    item: schema.OrderItem,
+    customer: schema.Customer
+  ): Promise<any> {
+    const config = item.configuration as Record<string, any>;
+    const domain = config.domain;
+    const username = config.username || 'admin';
+    const planId = config.planId;
+
+    // Create email domain in OpenSRS
+    await this.opensrsEmail.createMailDomain(domain);
+
+    // Create the mailbox
+    const mailboxResult = await this.opensrsEmail.createMailbox(
+      domain,
+      username,
+      config.password || crypto.randomBytes(16).toString('base64url'),
+      {
+        storageQuotaMB: config.storageQuotaMB,
+        firstName: customer.firstName || undefined,
+        lastName: customer.lastName || undefined,
+      }
+    );
+
+    // Create email account record
+    const [emailAccount] = await tx.insert(schema.emailAccounts).values({
+      customerId: customer.id,
+      planId: planId || 1,
+      domainId: config.domainId || null,
+      email: `${username}@${domain}`,
+      status: 'active',
+      openSrsMailboxId: mailboxResult.email || `${username}@${domain}`,
+      mailDomain: domain,
+      username,
+      subscriptionEndDate: new Date(Date.now() + (item.termMonths ?? 12) * 30 * 24 * 60 * 60 * 1000),
+    }).returning();
+
+    return { externalId: emailAccount.uuid };
+  }
+
+  /**
+   * Order SSL certificate
+   */
+  private async orderSSL(
+    tx: any,
+    item: schema.OrderItem,
+    customer: schema.Customer
+  ): Promise<any> {
+    const config = item.configuration as Record<string, any>;
+
+    const orderResult = await this.opensrsSSL.orderCertificate({
+      productType: config.productType || 'dv',
+      provider: config.provider || 'sectigo',
+      domain: config.domain,
+      period: config.termYears || 1,
+      csr: config.csr || '',
+      approverEmail: config.approverEmail || customer.email,
+      contacts: {
+        admin: {
+          firstName: customer.firstName || '',
+          lastName: customer.lastName || '',
+          email: customer.email,
+          phone: customer.phone || '',
+        },
+      },
+    });
+
+    // Create SSL certificate record
+    const [cert] = await tx.insert(schema.sslCertificates).values({
+      customerId: customer.id,
+      domainId: config.domainId || null,
+      domainName: config.domain,
+      type: config.productType || 'dv',
+      provider: config.provider || 'sectigo',
+      status: 'pending',
+      openSrsOrderId: orderResult.orderId,
+      productId: config.productId,
+      providerName: config.provider || 'sectigo',
+      validationLevel: config.productType || 'dv',
+      csrPem: config.csr,
+      privateKeyEncrypted: config.privateKeyEncrypted,
+      approverEmail: config.approverEmail || customer.email,
+      dcvMethod: 'email',
+      dcvStatus: 'pending',
+      termYears: config.termYears || 1,
+      totalPrice: item.totalPrice,
+    }).returning();
+
+    return { externalId: orderResult.orderId };
+  }
+
+  /**
+   * Provision SiteLock account
+   */
+  private async provisionSiteLock(
+    tx: any,
+    item: schema.OrderItem,
+    customer: schema.Customer
+  ): Promise<any> {
+    const config = item.configuration as Record<string, any>;
+
+    const result = await this.sitelock.createAccount({
+      domain: config.domain,
+      planSlug: config.planSlug || 'basic',
+      contactEmail: customer.email,
+      contactName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email,
+    });
+
+    // Create SiteLock account record
+    const [slAccount] = await tx.insert(schema.sitelockAccounts).values({
+      customerId: customer.id,
+      domainId: config.domainId || null,
+      plan: config.planSlug || 'basic',
+      status: 'active',
+      sitelockAccountId: result.accountId,
+      sitelockPlanId: config.planSlug || 'basic',
+      contactEmail: customer.email,
+      subscriptionEndDate: new Date(Date.now() + (item.termMonths ?? 12) * 30 * 24 * 60 * 60 * 1000),
+    }).returning();
+
+    return { externalId: result.accountId };
   }
 
   /**
