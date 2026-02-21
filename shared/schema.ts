@@ -270,8 +270,8 @@ export const domains = pgTable('domains', {
   dnsZoneId: integer('dns_zone_id'),
   
   // External references
-  openrsOrderId: varchar('openrs_order_id', { length: 100 }),
-  openrsDomainId: varchar('openrs_domain_id', { length: 100 }),
+  opensrsOrderId: varchar('opensrs_order_id', { length: 100 }),
+  opensrsDomainId: varchar('opensrs_domain_id', { length: 100 }),
   
   // Transfer specific
   isTransfer: boolean('is_transfer').default(false).notNull(),
@@ -295,7 +295,7 @@ export const domains = pgTable('domains', {
   domainIdx: uniqueIndex('domains_domain_idx').on(table.domainName),
   statusIdx: index('domains_status_idx').on(table.status),
   expiryIdx: index('domains_expiry_idx').on(table.expiryDate),
-  openrsIdx: index('domains_openrs_idx').on(table.openrsDomainId),
+  opensrsIdx: index('domains_opensrs_idx').on(table.opensrsDomainId),
 }));
 
 export const domainsRelations = relations(domains, ({ one, many }) => ({
@@ -346,7 +346,7 @@ export const dnsRecords = pgTable('dns_records', {
   isActive: boolean('is_active').default(true).notNull(),
   
   // External sync
-  syncedToOpenrs: boolean('synced_to_openrs').default(false).notNull(),
+  syncedToOpensrs: boolean('synced_to_opensrs').default(false).notNull(),
   lastSyncAt: timestamp('last_sync_at'),
   syncError: text('sync_error'),
   

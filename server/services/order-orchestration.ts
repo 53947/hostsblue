@@ -359,8 +359,8 @@ export class OrderOrchestrator {
         process.env.HOSTSBLUE_NS2 || 'ns2.hostsblue.com',
       ],
       useHostsBlueNameservers: true,
-      openrsOrderId: registrationResult.orderId,
-      openrsDomainId: registrationResult.domainId,
+      opensrsOrderId: registrationResult.orderId,
+      opensrsDomainId: registrationResult.domainId,
     }).returning();
 
     // Update order item with domain reference
@@ -429,7 +429,7 @@ export class OrderOrchestrator {
       transferStatus: transferResult.status,
       autoRenew: true,
       ownerContactId: contact.id,
-      openrsOrderId: transferResult.transferId,
+      opensrsOrderId: transferResult.transferId,
     }).returning();
 
     await tx.update(schema.orderItems)

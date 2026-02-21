@@ -535,7 +535,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       try {
         await openSRS.updateDnsRecords(domain.domainName, [{ type, name: name || '@', content, ttl: ttl || 3600, priority }]);
         await db.update(schema.dnsRecords)
-          .set({ syncedToOpenrs: true, lastSyncAt: new Date() })
+          .set({ syncedToOpensrs: true, lastSyncAt: new Date() })
           .where(eq(schema.dnsRecords.id, record.id));
       } catch (err: any) {
         await db.update(schema.dnsRecords)
@@ -569,7 +569,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
         ...(content !== undefined && { content }),
         ...(ttl !== undefined && { ttl }),
         ...(priority !== undefined && { priority }),
-        syncedToOpenrs: false,
+        syncedToOpensrs: false,
         updatedAt: new Date(),
       })
       .where(eq(schema.dnsRecords.id, recordId))
@@ -585,7 +585,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
           type: r.type, name: r.name, content: r.content, ttl: r.ttl, priority: r.priority ?? undefined,
         })));
         await db.update(schema.dnsRecords)
-          .set({ syncedToOpenrs: true, lastSyncAt: new Date(), syncError: null })
+          .set({ syncedToOpensrs: true, lastSyncAt: new Date(), syncError: null })
           .where(eq(schema.dnsRecords.id, recordId));
       } catch (err: any) {
         await db.update(schema.dnsRecords)
