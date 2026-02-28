@@ -1045,6 +1045,9 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
         uuid: schema.cloudServers.uuid,
         name: schema.cloudServers.name,
         planSlug: schema.cloudServers.planSlug,
+        cpu: schema.cloudServers.cpu,
+        ramMB: schema.cloudServers.ramMB,
+        diskGB: schema.cloudServers.diskGB,
         datacenter: schema.cloudServers.datacenter,
         ipv4: schema.cloudServers.ipv4,
         status: schema.cloudServers.status,
@@ -1058,6 +1061,142 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       .orderBy(desc(schema.cloudServers.createdAt));
 
     res.json(successResponse(servers));
+  }));
+
+  // Admin — cloud server power action
+  app.post('/api/v1/admin/cloud/servers/:uuid/power', requireAuth, asyncHandler(async (req, res) => {
+    const user = (req as any).user;
+    if (user.role !== 'admin') return res.status(403).json(errorResponse('Admin access required'));
+
+    const { uuid } = req.params;
+    const { action } = req.body;
+    if (!['on', 'off', 'reboot'].includes(action)) {
+      return res.status(400).json(errorResponse('Invalid action'));
+    }
+
+    const [server] = await db.select().from(schema.cloudServers).where(eq(schema.cloudServers.uuid, uuid));
+    if (!server) return res.status(404).json(errorResponse('Server not found'));
+
+    await hostingProvisioner.powerAction(server.id, server.customerId, action);
+
+    await db.insert(schema.auditLogs).values({
+      customerId: user.id,
+      action: `admin_cloud_power_${action}`,
+      entityType: 'cloud_server',
+      entityId: String(server.id),
+      description: `Admin power ${action} on ${server.name}`,
+    });
+
+    res.json(successResponse({ message: `Power ${action} initiated` }));
+  }));
+
+  // Admin — cloud server terminate
+  app.delete('/api/v1/admin/cloud/servers/:uuid', requireAuth, asyncHandler(async (req, res) => {
+    const user = (req as any).user;
+    if (user.role !== 'admin') return res.status(403).json(errorResponse('Admin access required'));
+
+    const { uuid } = req.params;
+    const [server] = await db.select().from(schema.cloudServers).where(eq(schema.cloudServers.uuid, uuid));
+    if (!server) return res.status(404).json(errorResponse('Server not found'));
+
+    await hostingProvisioner.terminateServer(server.id, server.customerId);
+
+    await db.insert(schema.auditLogs).values({
+      customerId: user.id,
+      action: 'admin_cloud_terminate',
+      entityType: 'cloud_server',
+      entityId: String(server.id),
+      description: `Admin terminated server ${server.name}`,
+    });
+
+    res.json(successResponse({ message: 'Server terminated' }));
+  }));
+
+  // ============================================================================
+  // ADMIN — BUILDER PROJECTS
+  // ============================================================================
+
+  app.get('/api/v1/admin/builder/projects', requireAuth, asyncHandler(async (req, res) => {
+    const user = (req as any).user;
+    if (user.role !== 'admin') return res.status(403).json(errorResponse('Admin access required'));
+
+    const projects = await db
+      .select({
+        id: schema.websiteProjects.id,
+        uuid: schema.websiteProjects.uuid,
+        name: schema.websiteProjects.name,
+        slug: schema.websiteProjects.slug,
+        templateSlug: schema.websiteProjects.template,
+        status: schema.websiteProjects.status,
+        customerId: schema.websiteProjects.customerId,
+        customerEmail: schema.customers.email,
+        updatedAt: schema.websiteProjects.updatedAt,
+        createdAt: schema.websiteProjects.createdAt,
+      })
+      .from(schema.websiteProjects)
+      .leftJoin(schema.customers, eq(schema.websiteProjects.customerId, schema.customers.id))
+      .orderBy(desc(schema.websiteProjects.updatedAt));
+
+    res.json(successResponse(projects));
+  }));
+
+  // Admin — unpublish builder project
+  app.post('/api/v1/admin/builder/projects/:uuid/unpublish', requireAuth, asyncHandler(async (req, res) => {
+    const user = (req as any).user;
+    if (user.role !== 'admin') return res.status(403).json(errorResponse('Admin access required'));
+
+    const { uuid } = req.params;
+    await db.update(schema.websiteProjects)
+      .set({ status: 'draft', publishedAt: null, updatedAt: new Date() })
+      .where(eq(schema.websiteProjects.uuid, uuid));
+
+    res.json(successResponse({ message: 'Project unpublished' }));
+  }));
+
+  // ============================================================================
+  // ADMIN — OVERVIEW STATS
+  // ============================================================================
+
+  app.get('/api/v1/admin/overview', requireAuth, asyncHandler(async (req, res) => {
+    const user = (req as any).user;
+    if (user.role !== 'admin') return res.status(403).json(errorResponse('Admin access required'));
+
+    const [customerCount] = await db.select({ count: sql<number>`count(*)` }).from(schema.customers);
+    const [domainCount] = await db.select({ count: sql<number>`count(*)` }).from(schema.domains);
+    const [hostingCount] = await db.select({ count: sql<number>`count(*)` }).from(schema.hostingAccounts);
+    const [cloudCount] = await db.select({ count: sql<number>`count(*)` }).from(schema.cloudServers)
+      .where(sql`${schema.cloudServers.status} != 'terminated'`);
+    const [builderCount] = await db.select({ count: sql<number>`count(*)` }).from(schema.websiteProjects);
+
+    // Monthly revenue from active cloud servers
+    const [cloudMRR] = await db.select({ total: sql<number>`coalesce(sum(${schema.cloudServers.monthlyPrice}), 0)` })
+      .from(schema.cloudServers)
+      .where(eq(schema.cloudServers.status, 'active'));
+
+    // Recent orders
+    const recentOrders = await db
+      .select({
+        id: schema.orders.id,
+        orderNumber: schema.orders.orderNumber,
+        total: schema.orders.total,
+        status: schema.orders.status,
+        createdAt: schema.orders.createdAt,
+        customerEmail: schema.customers.email,
+      })
+      .from(schema.orders)
+      .leftJoin(schema.customers, eq(schema.orders.customerId, schema.customers.id))
+      .orderBy(desc(schema.orders.createdAt))
+      .limit(8);
+
+    res.json(successResponse({
+      customers: Number(customerCount.count),
+      domains: Number(domainCount.count),
+      hosting: Number(hostingCount.count),
+      cloudServers: Number(cloudCount.count),
+      builderProjects: Number(builderCount.count),
+      monthlyRevenue: Number(cloudMRR.total),
+      recentOrders,
+    }));
   }));
 
   // ============================================================================
@@ -1476,6 +1615,26 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       sql`${schema.hostingAccounts.deletedAt} IS NULL`
     ));
 
+    // Cloud server count
+    const cloudServerCount = await db.select({
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.cloudServers)
+    .where(and(
+      eq(schema.cloudServers.customerId, req.user!.userId),
+      sql`${schema.cloudServers.status} != 'terminated'`
+    ));
+
+    // Website builder project count
+    const builderProjectCount = await db.select({
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.websiteProjects)
+    .where(and(
+      eq(schema.websiteProjects.customerId, req.user!.userId),
+      sql`${schema.websiteProjects.deletedAt} IS NULL`
+    ));
+
     res.json(successResponse({
       domains: {
         total: domainStats.reduce((acc, s) => acc + Number(s.count), 0),
@@ -1485,6 +1644,9 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       hosting: {
         total: hostingStats.reduce((acc, s) => acc + Number(s.count), 0),
         byStatus: hostingStats,
+      },
+      cloudServers: {
+        total: Number(cloudServerCount[0]?.count || 0),
       },
       email: {
         total: Number(emailCount[0]?.count || 0),
@@ -1496,6 +1658,9 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       },
       sitelock: {
         total: Number(sitelockCount[0]?.count || 0),
+      },
+      builder: {
+        total: Number(builderProjectCount[0]?.count || 0),
       },
       recentOrders,
       monthlySpendEstimate: Number(monthlySpend[0]?.total || 0),

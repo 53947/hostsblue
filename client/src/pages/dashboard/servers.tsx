@@ -1,19 +1,32 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { cloudHostingApi } from '@/lib/api';
 import {
-  Loader2, Plus, Server, Power, PowerOff, RotateCcw, Trash2, Camera,
-  MapPin, Cpu, MemoryStick, HardDrive, Globe, ChevronRight, ArrowLeft,
-  Terminal, AlertTriangle, X
+  Loader2, Plus, Server, Power, PowerOff, RotateCcw,
+  Globe, ChevronRight, ArrowLeft, Terminal, Copy, Check, X,
 } from 'lucide-react';
 
-const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-700',
-  provisioning: 'bg-yellow-100 text-yellow-700',
-  stopped: 'bg-red-100 text-red-700',
-  terminated: 'bg-gray-100 text-gray-500',
-  failed: 'bg-red-100 text-red-700',
+const PLAN_LABELS: Record<string, string> = {
+  'cloud-developer': 'Developer',
+  'cloud-startup': 'Startup',
+  'cloud-scale': 'Scale',
+  'cloud-enterprise': 'Enterprise',
+};
+
+const statusDot: Record<string, string> = {
+  active: 'bg-green-500',
+  provisioning: 'bg-yellow-400 animate-pulse',
+  stopped: 'bg-red-500',
+  terminated: 'bg-gray-400',
+  failed: 'bg-red-500',
+};
+
+const statusLabel: Record<string, string> = {
+  active: 'Running',
+  provisioning: 'Provisioning',
+  stopped: 'Stopped',
+  terminated: 'Terminated',
+  failed: 'Failed',
 };
 
 export function ServersPage() {
@@ -36,15 +49,6 @@ export function ServersPage() {
     },
   });
 
-  const terminateMutation = useMutation({
-    mutationFn: (uuid: string) => cloudHostingApi.terminateServer(uuid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cloud-servers'] });
-      setConfirmAction(null);
-      setSelected(null);
-    },
-  });
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -53,14 +57,12 @@ export function ServersPage() {
     );
   }
 
-  // Detail view
   if (selected) {
     return (
       <ServerDetail
         server={selected}
         onBack={() => { setSelected(null); queryClient.invalidateQueries({ queryKey: ['cloud-servers'] }); }}
         onPower={(action) => setConfirmAction({ action, uuid: selected.uuid })}
-        onTerminate={() => setConfirmAction({ action: 'terminate', uuid: selected.uuid })}
       />
     );
   }
@@ -70,7 +72,7 @@ export function ServersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Cloud Servers</h1>
-          <p className="text-gray-500">Manage your cloud infrastructure</p>
+          <p className="text-gray-500">Your cloud hosting infrastructure</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Deploy Server
@@ -93,18 +95,22 @@ export function ServersPage() {
                   <div>
                     <h3 className="font-semibold text-gray-900">{s.name}</h3>
                     <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
-                      {s.ipv4 && <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{s.ipv4}</span>}
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{s.datacenter}</span>
-                      <span className="flex items-center gap-1"><Cpu className="w-3 h-3" />{s.cpu?.replace('B', ' vCPU')}</span>
-                      <span className="flex items-center gap-1"><MemoryStick className="w-3 h-3" />{(s.ramMB / 1024).toFixed(0)}GB</span>
-                      <span className="flex items-center gap-1"><HardDrive className="w-3 h-3" />{s.diskGB}GB SSD</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${statusDot[s.status] || 'bg-gray-400'}`} />
+                        {statusLabel[s.status] || s.status}
+                      </span>
+                      <span className="text-gray-300">|</span>
+                      <span>{PLAN_LABELS[s.planSlug] || s.planSlug}</span>
+                      {s.ipv4 && (
+                        <>
+                          <span className="text-gray-300">|</span>
+                          <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{s.ipv4}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${statusColors[s.status] || 'bg-gray-100 text-gray-600'}`}>
-                    {s.status}
-                  </span>
                   <span className="text-sm font-medium text-gray-700">${(s.monthlyPrice / 100).toFixed(2)}/mo</span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </div>
@@ -127,36 +133,29 @@ export function ServersPage() {
         <ConfirmDialog
           action={confirmAction.action}
           onConfirm={() => {
-            if (confirmAction.action === 'terminate') {
-              terminateMutation.mutate(confirmAction.uuid);
-            } else {
-              powerMutation.mutate({ uuid: confirmAction.uuid, action: confirmAction.action as any });
-            }
+            powerMutation.mutate({ uuid: confirmAction.uuid, action: confirmAction.action as any });
           }}
           onCancel={() => setConfirmAction(null)}
-          loading={powerMutation.isPending || terminateMutation.isPending}
+          loading={powerMutation.isPending}
         />
       )}
     </div>
   );
 }
 
-function ServerDetail({ server, onBack, onPower, onTerminate }: {
+function ServerDetail({ server, onBack, onPower }: {
   server: any;
   onBack: () => void;
   onPower: (action: string) => void;
-  onTerminate: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const { data: snapshots } = useQuery({
-    queryKey: ['cloud-snapshots', server.uuid],
-    queryFn: () => cloudHostingApi.getSnapshots(server.uuid),
-  });
+  const [copied, setCopied] = useState(false);
 
-  const snapshotMutation = useMutation({
-    mutationFn: (name: string) => cloudHostingApi.createSnapshot(server.uuid, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cloud-snapshots', server.uuid] }),
-  });
+  const copyIp = () => {
+    if (!server.ipv4) return;
+    navigator.clipboard.writeText(server.ipv4);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="space-y-6">
@@ -168,11 +167,14 @@ function ServerDetail({ server, onBack, onPower, onTerminate }: {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{server.name}</h1>
           <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${statusColors[server.status] || 'bg-gray-100'}`}>
-              {server.status}
+            <span className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${statusDot[server.status] || 'bg-gray-400'}`} />
+              {statusLabel[server.status] || server.status}
             </span>
-            {server.ipv4 && <span>{server.ipv4}</span>}
-            <span>{server.datacenter}</span>
+            <span className="text-gray-300">|</span>
+            <span>{PLAN_LABELS[server.planSlug] || server.planSlug} Plan</span>
+            <span className="text-gray-300">|</span>
+            <span>${(server.monthlyPrice / 100).toFixed(2)}/mo</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -184,7 +186,7 @@ function ServerDetail({ server, onBack, onPower, onTerminate }: {
           {server.status === 'active' && (
             <>
               <button onClick={() => onPower('reboot')} className="px-3 py-2 border border-gray-200 rounded-[7px] text-sm hover:bg-gray-50 flex items-center gap-2">
-                <RotateCcw className="w-4 h-4" /> Reboot
+                <RotateCcw className="w-4 h-4" /> Restart
               </button>
               <button onClick={() => onPower('off')} className="px-3 py-2 border border-gray-200 rounded-[7px] text-sm hover:bg-gray-50 flex items-center gap-2">
                 <PowerOff className="w-4 h-4" /> Stop
@@ -194,19 +196,27 @@ function ServerDetail({ server, onBack, onPower, onTerminate }: {
         </div>
       </div>
 
-      {/* Specs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'CPU', value: server.cpu?.replace('B', ' vCPU'), icon: Cpu },
-          { label: 'RAM', value: `${(server.ramMB / 1024).toFixed(0)} GB`, icon: MemoryStick },
-          { label: 'Storage', value: `${server.diskGB} GB SSD`, icon: HardDrive },
-          { label: 'Cost', value: `$${(server.monthlyPrice / 100).toFixed(2)}/mo`, icon: Globe },
-        ].map(({ label, value, icon: Icon }) => (
-          <div key={label} className="bg-white border border-gray-200 rounded-[7px] p-4">
-            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Icon className="w-3.5 h-3.5" />{label}</div>
-            <div className="text-lg font-semibold text-gray-900">{value}</div>
+      {/* Server Info */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-[7px] p-4">
+          <div className="text-xs text-gray-500 mb-1">Plan</div>
+          <div className="text-lg font-semibold text-gray-900">{PLAN_LABELS[server.planSlug] || server.planSlug}</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-4">
+          <div className="text-xs text-gray-500 mb-1">IP Address</div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold text-gray-900">{server.ipv4 || 'Pending'}</span>
+            {server.ipv4 && (
+              <button onClick={copyIp} className="p-1 text-gray-400 hover:text-[#064A6C]">
+                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              </button>
+            )}
           </div>
-        ))}
+        </div>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-4">
+          <div className="text-xs text-gray-500 mb-1">Monthly Cost</div>
+          <div className="text-lg font-semibold text-gray-900">${(server.monthlyPrice / 100).toFixed(2)}</div>
+        </div>
       </div>
 
       {/* SSH Info */}
@@ -222,61 +232,23 @@ function ServerDetail({ server, onBack, onPower, onTerminate }: {
         </div>
       )}
 
-      {/* Snapshots */}
-      <div className="bg-white border border-gray-200 rounded-[7px] p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <Camera className="w-4 h-4" /> Snapshots
-          </h3>
-          <button
-            onClick={() => {
-              const name = `snapshot-${new Date().toISOString().slice(0, 10)}`;
-              snapshotMutation.mutate(name);
-            }}
-            disabled={snapshotMutation.isPending || server.status !== 'active'}
-            className="text-sm text-[#064A6C] hover:text-[#053C58] font-medium disabled:opacity-50"
-          >
-            {snapshotMutation.isPending ? 'Creating...' : 'Create Snapshot'}
-          </button>
+      {/* Upgrade */}
+      {server.status !== 'terminated' && (
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5">
+          <h3 className="font-semibold text-gray-900 mb-2">Need more power?</h3>
+          <p className="text-sm text-gray-500 mb-3">Contact support to upgrade your server to a larger plan without downtime.</p>
+          <a href="/dashboard/support" className="text-sm text-[#064A6C] hover:text-[#053C58] font-medium">
+            Contact Support →
+          </a>
         </div>
-        {snapshots && snapshots.length > 0 ? (
-          <div className="space-y-2">
-            {snapshots.map((snap: any) => (
-              <div key={snap.id} className="flex items-center justify-between text-sm border border-gray-100 rounded-[7px] px-3 py-2">
-                <span className="font-medium text-gray-900">{snap.name}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 capitalize">{snap.status}</span>
-                  <span className="text-xs text-gray-400">{new Date(snap.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500">No snapshots yet. Create one to save your server state.</p>
-        )}
-      </div>
-
-      {/* Danger Zone */}
-      <div className="bg-white border border-red-200 rounded-[7px] p-5">
-        <h3 className="font-semibold text-red-700 mb-2 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" /> Danger Zone
-        </h3>
-        <p className="text-sm text-gray-600 mb-3">Terminating a server permanently deletes all data. This action cannot be undone.</p>
-        <button
-          onClick={onTerminate}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-[7px] transition-colors"
-        >
-          Terminate Server
-        </button>
-      </div>
+      )}
     </div>
   );
 }
 
 function CreateServerModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ planSlug: 'cloud-developer', name: '', datacenter: 'US-NY2', os: 'ubuntu_server_24.04_64-bit' });
+  const [form, setForm] = useState({ planSlug: 'cloud-developer', name: '' });
 
   const { data: options } = useQuery({
     queryKey: ['cloud-options'],
@@ -284,7 +256,11 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => cloudHostingApi.createServer(form),
+    mutationFn: () => cloudHostingApi.createServer({
+      ...form,
+      datacenter: options?.datacenters?.[0]?.id || 'US-NY2',
+      os: 'ubuntu_server_24.04_64-bit',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cloud-servers'] });
       onClose();
@@ -292,8 +268,6 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
   });
 
   const plans = options?.plans || [];
-  const datacenters = options?.datacenters || [];
-  const images = options?.images || [];
   const selectedPlan = plans.find((p: any) => p.slug === form.planSlug);
 
   return (
@@ -307,7 +281,7 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
         <div className="p-5 space-y-5">
           {/* Plan selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Plan</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Choose a Plan</label>
             <div className="grid grid-cols-2 gap-2">
               {plans.map((p: any) => (
                 <button
@@ -316,7 +290,7 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
                   className={`border rounded-[7px] p-3 text-left transition-colors ${form.planSlug === p.slug ? 'border-[#064A6C] bg-[#064A6C]/5' : 'border-gray-200 hover:border-gray-300'}`}
                 >
                   <div className="font-medium text-sm text-gray-900">{p.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{p.features.slice(0, 3).join(', ')}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{p.features.slice(0, 2).join(' · ')}</div>
                   <div className="font-semibold text-[#064A6C] text-sm mt-1">${(p.monthlyPrice / 100).toFixed(2)}/mo</div>
                 </button>
               ))}
@@ -333,34 +307,6 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
               placeholder="my-web-server"
               className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#064A6C]"
             />
-          </div>
-
-          {/* Datacenter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Datacenter</label>
-            <select
-              value={form.datacenter}
-              onChange={e => setForm(f => ({ ...f, datacenter: e.target.value }))}
-              className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#064A6C]"
-            >
-              {datacenters.map((dc: any) => (
-                <option key={dc.id} value={dc.id}>{dc.name} ({dc.region})</option>
-              ))}
-            </select>
-          </div>
-
-          {/* OS */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
-            <select
-              value={form.os}
-              onChange={e => setForm(f => ({ ...f, os: e.target.value }))}
-              className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#064A6C]"
-            >
-              {images.map((img: any) => (
-                <option key={img.id} value={img.id}>{img.name}</option>
-              ))}
-            </select>
           </div>
 
           {createMutation.isError && (
@@ -392,8 +338,7 @@ function ConfirmDialog({ action, onConfirm, onCancel, loading }: {
   const labels: Record<string, { title: string; desc: string; btn: string; danger: boolean }> = {
     on: { title: 'Start Server', desc: 'This will power on the server.', btn: 'Start', danger: false },
     off: { title: 'Stop Server', desc: 'This will gracefully shut down the server. Running processes will be terminated.', btn: 'Stop', danger: true },
-    reboot: { title: 'Reboot Server', desc: 'This will restart the server. There will be a brief interruption.', btn: 'Reboot', danger: false },
-    terminate: { title: 'Terminate Server', desc: 'This will permanently delete the server and all its data. This action cannot be undone.', btn: 'Terminate', danger: true },
+    reboot: { title: 'Restart Server', desc: 'This will restart the server. There will be a brief interruption.', btn: 'Restart', danger: false },
   };
   const l = labels[action] || labels.on;
 

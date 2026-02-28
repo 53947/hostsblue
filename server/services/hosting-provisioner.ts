@@ -335,12 +335,31 @@ export class HostingProvisioner {
   }
 
   private generatePassword(): string {
-    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
-    let password = '';
-    const bytes = crypto.randomBytes(16);
-    for (let i = 0; i < 16; i++) {
-      password += chars[bytes[i] % chars.length];
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const digits = '23456789';
+    const all = lower + upper + digits + '!@#$%';
+
+    // Guarantee at least one of each required class
+    const bytes = crypto.randomBytes(20);
+    const required = [
+      lower[bytes[0] % lower.length],
+      upper[bytes[1] % upper.length],
+      digits[bytes[2] % digits.length],
+    ];
+
+    // Fill remaining 13 chars from full set
+    const rest: string[] = [];
+    for (let i = 3; i < 16; i++) {
+      rest.push(all[bytes[i] % all.length]);
     }
-    return password;
+
+    // Shuffle all 16 chars together
+    const chars = [...required, ...rest];
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = bytes[(i + 3) % bytes.length] % (i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
   }
 }

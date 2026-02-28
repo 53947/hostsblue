@@ -1,95 +1,154 @@
 import { useState } from 'react';
-import { MoreHorizontal, Eye, Ban, Trash2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MoreHorizontal, Eye, Ban, Trash2, Loader2, Palette, Globe, ExternalLink } from 'lucide-react';
 
-interface BuilderProject {
-  id: number;
-  name: string;
-  domain: string;
-  customer: string;
-  template: string;
-  status: 'Published' | 'Draft';
-  lastEdited: string;
+const API_URL = import.meta.env.VITE_API_URL || '';
+async function adminFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_URL}/api/v1${endpoint}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(options.headers as Record<string, string> || {}) },
+    ...options,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch');
+  return data.data;
 }
 
-const projects: BuilderProject[] = [
-  { id: 1, name: 'Mitchell Design Portfolio', domain: 'mitchelldesign.com', customer: 'Sarah Mitchell', template: 'Creative Portfolio', status: 'Published', lastEdited: 'Feb 18, 2026' },
-  { id: 2, name: 'GreenLeaf Online Store', domain: 'ecofriendly.shop', customer: 'Priya Sharma', template: 'E-commerce Standard', status: 'Published', lastEdited: 'Feb 17, 2026' },
-  { id: 3, name: 'Bennett Law Firm Site', domain: 'bennettlaw.com', customer: 'Laura Bennett', template: 'Professional Services', status: 'Published', lastEdited: 'Feb 15, 2026' },
-  { id: 4, name: 'Wright Photography', domain: 'wrightphoto.com', customer: 'Thomas Wright', template: 'Photography Gallery', status: 'Draft', lastEdited: 'Feb 14, 2026' },
-  { id: 5, name: 'Lagos Digital Agency', domain: 'lagosdigital.ng', customer: 'Michael Okonkwo', template: 'Agency Landing', status: 'Published', lastEdited: 'Feb 12, 2026' },
-  { id: 6, name: 'Tokyo Creative Hub', domain: 'tokyocreative.co', customer: 'Robert Tanaka', template: 'Creative Portfolio', status: 'Draft', lastEdited: 'Feb 10, 2026' },
-];
-
 const statusColors: Record<string, string> = {
-  Published: 'bg-[#10B981] text-white',
-  Draft: 'bg-[#FFD700] text-[#09080E]',
+  published: 'bg-[#10B981] text-white',
+  draft: 'bg-[#FFD700] text-[#09080E]',
+  suspended: 'bg-[#DC2626] text-white',
 };
 
 export function PanelBuilderPage() {
-  const [openActions, setOpenActions] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const [openActions, setOpenActions] = useState<string | null>(null);
+
+  const { data: projects, isLoading } = useQuery({
+    queryKey: ['panel', 'builder-projects'],
+    queryFn: () => adminFetch<any[]>('/admin/builder/projects'),
+  });
+
+  const unpublishMutation = useMutation({
+    mutationFn: (uuid: string) =>
+      adminFetch(`/admin/builder/projects/${uuid}/unpublish`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel', 'builder-projects'] });
+      setOpenActions(null);
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 text-[#064A6C] animate-spin" />
+      </div>
+    );
+  }
+
+  const publishedCount = projects?.filter((p: any) => p.status === 'published').length || 0;
+  const draftCount = projects?.filter((p: any) => p.status === 'draft').length || 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#09080E]">Website Builder</h1>
-        <p className="text-[#4B5563]">Manage customer website builder projects</p>
+        <p className="text-[#4B5563]">All customer website builder projects</p>
       </div>
 
-      {/* Builder Table */}
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Total Projects', value: projects?.length || 0 },
+          { label: 'Published', value: publishedCount },
+          { label: 'Drafts', value: draftCount },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-white border border-gray-200 rounded-[7px] p-4">
+            <div className="text-xs text-gray-500">{label}</div>
+            <div className="text-2xl font-bold text-gray-900 mt-1">{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Projects Table */}
       <div className="bg-white border border-[#E5E7EB] rounded-[7px] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-sm text-[#4B5563] border-b border-[#E5E7EB] bg-[#F9FAFB]">
-                <th className="px-6 py-3 font-medium">Project Name</th>
-                <th className="px-6 py-3 font-medium">Domain</th>
-                <th className="px-6 py-3 font-medium">Customer</th>
-                <th className="px-6 py-3 font-medium">Template</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Last Edited</th>
-                <th className="px-6 py-3 font-medium">Actions</th>
+        <table className="w-full">
+          <thead>
+            <tr className="text-left text-sm text-[#4B5563] border-b border-[#E5E7EB] bg-[#F9FAFB]">
+              <th className="px-6 py-3 font-medium">Project</th>
+              <th className="px-6 py-3 font-medium">Customer</th>
+              <th className="px-6 py-3 font-medium">Template</th>
+              <th className="px-6 py-3 font-medium">Pages</th>
+              <th className="px-6 py-3 font-medium">Status</th>
+              <th className="px-6 py-3 font-medium">Updated</th>
+              <th className="px-6 py-3 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projects && projects.length > 0 ? projects.map((project: any) => (
+              <tr key={project.uuid} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-3">
+                  <div className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-gray-400" />
+                    <div>
+                      <div className="text-sm font-medium text-[#09080E]">{project.name}</div>
+                      {project.slug && (
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <Globe className="w-3 h-3" />{project.slug}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-3 text-sm text-[#09080E]">{project.customerEmail || `#${project.customerId}`}</td>
+                <td className="px-6 py-3 text-sm text-[#4B5563]">{project.templateSlug || '—'}</td>
+                <td className="px-6 py-3 text-sm text-[#4B5563]">{project.pageCount || 0}</td>
+                <td className="px-6 py-3">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[project.status] || 'bg-gray-100 text-gray-500'}`}>
+                    {project.status}
+                  </span>
+                </td>
+                <td className="px-6 py-3 text-sm text-[#4B5563]">
+                  {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : '—'}
+                </td>
+                <td className="px-6 py-3 relative">
+                  <button
+                    onClick={() => setOpenActions(openActions === project.uuid ? null : project.uuid)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <MoreHorizontal className="w-4 h-4 text-[#4B5563]" />
+                  </button>
+                  {openActions === project.uuid && (
+                    <div className="absolute right-6 top-10 bg-white border border-[#E5E7EB] rounded-[7px] shadow-lg py-1 z-10 w-44">
+                      {project.status === 'published' && project.slug && (
+                        <a
+                          href={`/sites/${project.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <ExternalLink className="w-4 h-4" /> View Live
+                        </a>
+                      )}
+                      {project.status === 'published' && (
+                        <button
+                          onClick={() => unpublishMutation.mutate(project.uuid)}
+                          className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Ban className="w-4 h-4" /> Unpublish
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <tr key={project.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-3 text-sm font-medium text-[#09080E]">{project.name}</td>
-                  <td className="px-6 py-3 text-sm text-[#064A6C]">{project.domain}</td>
-                  <td className="px-6 py-3 text-sm text-[#09080E]">{project.customer}</td>
-                  <td className="px-6 py-3 text-sm text-[#4B5563]">{project.template}</td>
-                  <td className="px-6 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[project.status]}`}>
-                      {project.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-sm text-[#4B5563]">{project.lastEdited}</td>
-                  <td className="px-6 py-3 relative">
-                    <button
-                      onClick={() => setOpenActions(openActions === project.id ? null : project.id)}
-                      className="p-1 hover:bg-gray-100 rounded"
-                    >
-                      <MoreHorizontal className="w-4 h-4 text-[#4B5563]" />
-                    </button>
-                    {openActions === project.id && (
-                      <div className="absolute right-6 top-10 bg-white border border-[#E5E7EB] rounded-[7px] shadow-lg py-1 z-10 w-40">
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2">
-                          <Eye className="w-4 h-4" /> View
-                        </button>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2">
-                          <Ban className="w-4 h-4" /> Suspend
-                        </button>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 flex items-center gap-2">
-                          <Trash2 className="w-4 h-4" /> Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            )) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">No builder projects yet</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

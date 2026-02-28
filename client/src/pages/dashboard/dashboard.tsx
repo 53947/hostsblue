@@ -3,6 +3,7 @@ import { dashboardApi } from '@/lib/api';
 import {
   Globe,
   Server,
+  Cloud,
   ShoppingCart,
   AlertTriangle,
   ArrowRight,
@@ -38,64 +39,61 @@ export function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
-        <div className="bg-white border border-gray-200 rounded-[7px] p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-              <Globe className="w-5 h-5 text-[#064A6C]" />
-            </div>
-            <span className="badge badge-neutral">{stats?.domains?.total || 0} Total</span>
+      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center mb-3">
+            <Globe className="w-4.5 h-4.5 text-[#064A6C]" />
           </div>
-          <h3 className="text-3xl font-bold text-gray-900 mb-1">
-            {stats?.domains?.total || 0}
-          </h3>
-          <p className="text-gray-500 text-sm">Active Domains</p>
+          <h3 className="text-2xl font-bold text-gray-900 mb-0.5">{stats?.domains?.total || 0}</h3>
+          <p className="text-gray-500 text-xs">Domains</p>
           {stats?.domains?.expiringSoon?.length > 0 && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center gap-2 text-yellow-700 text-sm">
-                <AlertTriangle className="w-4 h-4" />
-                <span>{stats.domains.expiringSoon.length} domain(s) expiring soon</span>
-              </div>
+            <div className="mt-2 flex items-center gap-1 text-yellow-600 text-xs">
+              <AlertTriangle className="w-3 h-3" />
+              <span>{stats.domains.expiringSoon.length} expiring</span>
             </div>
           )}
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-[7px] p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-              <Server className="w-5 h-5 text-[#064A6C]" />
-            </div>
-            <span className="badge badge-neutral">{stats?.hosting?.total || 0} Total</span>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center mb-3">
+            <Server className="w-4.5 h-4.5 text-[#064A6C]" />
           </div>
-          <h3 className="text-3xl font-bold text-gray-900 mb-1">
-            {stats?.hosting?.total || 0}
-          </h3>
-          <p className="text-gray-500 text-sm">Hosting Accounts</p>
+          <h3 className="text-2xl font-bold text-gray-900 mb-0.5">{stats?.hosting?.total || 0}</h3>
+          <p className="text-gray-500 text-xs">Hosting</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-[7px] p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-              <Mail className="w-5 h-5 text-[#064A6C]" />
-            </div>
-            <span className="badge badge-neutral">{stats?.email?.total || 0} Total</span>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center mb-3">
+            <Cloud className="w-4.5 h-4.5 text-[#064A6C]" />
           </div>
-          <h3 className="text-3xl font-bold text-gray-900 mb-1">
-            {stats?.email?.total || 0}
-          </h3>
-          <p className="text-gray-500 text-sm">Email Accounts</p>
+          <h3 className="text-2xl font-bold text-gray-900 mb-0.5">{stats?.cloudServers?.total || 0}</h3>
+          <p className="text-gray-500 text-xs">Cloud Servers</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-[7px] p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-[#064A6C]" />
-            </div>
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center mb-3">
+            <Mail className="w-4.5 h-4.5 text-[#064A6C]" />
           </div>
-          <h3 className="text-3xl font-bold text-gray-900 mb-1">
+          <h3 className="text-2xl font-bold text-gray-900 mb-0.5">{stats?.email?.total || 0}</h3>
+          <p className="text-gray-500 text-xs">Email</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center mb-3">
+            <Palette className="w-4.5 h-4.5 text-[#064A6C]" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-0.5">{stats?.builder?.total || 0}</h3>
+          <p className="text-gray-500 text-xs">Websites</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-[7px] p-5 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center mb-3">
+            <DollarSign className="w-4.5 h-4.5 text-[#064A6C]" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-0.5">
             ${((stats?.monthlySpendEstimate || 0) / 100).toFixed(2)}
           </h3>
-          <p className="text-gray-500 text-sm">Est. Monthly Spend</p>
+          <p className="text-gray-500 text-xs">Monthly Spend</p>
         </div>
       </div>
 
@@ -158,7 +156,7 @@ export function DashboardPage() {
       {/* Quick Actions */}
       <div className="bg-white border border-gray-200 rounded-[7px] p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
             to="/domains/search"
             className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
@@ -168,11 +166,19 @@ export function DashboardPage() {
             <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#064A6C] transition-all duration-200" />
           </Link>
           <Link
-            to="/hosting"
+            to="/dashboard/servers"
             className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
           >
-            <Server className="w-5 h-5 text-[#064A6C]" />
-            <span className="text-gray-900 flex-1">View Hosting Plans</span>
+            <Cloud className="w-5 h-5 text-[#064A6C]" />
+            <span className="text-gray-900 flex-1">Deploy Server</span>
+            <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#064A6C] transition-all duration-200" />
+          </Link>
+          <Link
+            to="/dashboard/website-builder"
+            className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+          >
+            <Palette className="w-5 h-5 text-[#064A6C]" />
+            <span className="text-gray-900 flex-1">Create Website</span>
             <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#064A6C] transition-all duration-200" />
           </Link>
           <Link
@@ -189,6 +195,14 @@ export function DashboardPage() {
           >
             <Server className="w-5 h-5 text-[#064A6C]" />
             <span className="text-gray-900 flex-1">Manage Hosting</span>
+            <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#064A6C] transition-all duration-200" />
+          </Link>
+          <Link
+            to="/dashboard/billing"
+            className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+          >
+            <DollarSign className="w-5 h-5 text-[#064A6C]" />
+            <span className="text-gray-900 flex-1">Billing & Credits</span>
             <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#064A6C] transition-all duration-200" />
           </Link>
         </div>

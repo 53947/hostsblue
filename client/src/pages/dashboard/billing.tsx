@@ -243,30 +243,36 @@ function DailyUsageChart({ data }: { data: any[] }) {
 // ============================================================================
 
 function ModelBreakdownTable({ data }: { data: any[] }) {
+  const totalCalls = data.reduce((sum, row) => sum + Number(row.calls), 0);
+  const totalCost = data.reduce((sum, row) => sum + Number(row.totalCost), 0);
+
   return (
     <div className="bg-white border border-gray-200 rounded-[7px] p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Per-Model Cost Breakdown (30d)</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Usage Breakdown (30d)</h2>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="text-left border-b border-gray-200">
-              <th className="pb-3 font-medium text-gray-500 text-sm">Model</th>
-              <th className="pb-3 font-medium text-gray-500 text-sm">Provider</th>
-              <th className="pb-3 font-medium text-gray-500 text-sm text-right">Calls</th>
-              <th className="pb-3 font-medium text-gray-500 text-sm text-right">Tokens</th>
+              <th className="pb-3 font-medium text-gray-500 text-sm">Usage</th>
+              <th className="pb-3 font-medium text-gray-500 text-sm text-right">Requests</th>
               <th className="pb-3 font-medium text-gray-500 text-sm text-right">Cost</th>
             </tr>
           </thead>
           <tbody>
             {data.map((row: any, i: number) => (
               <tr key={i} className="border-b border-gray-100 last:border-0">
-                <td className="py-3 text-sm text-gray-900 font-mono">{row.modelName}</td>
-                <td className="py-3 text-sm text-gray-500 capitalize">{row.provider}</td>
+                <td className="py-3 text-sm text-gray-900">AI Generation</td>
                 <td className="py-3 text-sm text-gray-900 text-right">{Number(row.calls).toLocaleString()}</td>
-                <td className="py-3 text-sm text-gray-900 text-right">{Number(row.totalTokens).toLocaleString()}</td>
                 <td className="py-3 text-sm text-gray-900 font-medium text-right">${(Number(row.totalCost) / 100).toFixed(2)}</td>
               </tr>
             ))}
+            {data.length > 1 && (
+              <tr className="border-t border-gray-200">
+                <td className="py-3 text-sm font-semibold text-gray-900">Total</td>
+                <td className="py-3 text-sm font-semibold text-gray-900 text-right">{totalCalls.toLocaleString()}</td>
+                <td className="py-3 text-sm font-semibold text-gray-900 text-right">${(totalCost / 100).toFixed(2)}</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -562,51 +568,27 @@ function SpendingLimitSettings({ balance }: { balance: any }) {
 // MODEL PRICING TABLE
 // ============================================================================
 
-function PricingTable({ models, pricing }: { models: any[]; pricing: any[] }) {
+function PricingTable({ models: _models, pricing: _pricing }: { models: any[]; pricing: any[] }) {
   return (
     <div className="bg-white border border-gray-200 rounded-[7px] p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Model Pricing</h2>
-      <p className="text-sm text-gray-500 mb-4">Per 1,000 tokens (with margin included)</p>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="text-left border-b border-gray-200">
-              <th className="pb-3 font-medium text-gray-500 text-sm">Provider</th>
-              <th className="pb-3 font-medium text-gray-500 text-sm">Model</th>
-              <th className="pb-3 font-medium text-gray-500 text-sm text-right">Input / 1K</th>
-              <th className="pb-3 font-medium text-gray-500 text-sm text-right">Output / 1K</th>
-            </tr>
-          </thead>
-          <tbody>
-            {models.map((group: any) =>
-              group.models.map((model: any, i: number) => {
-                const p = pricing.find((pr: any) => pr.model === model.id);
-                if (!p) return null;
-                return (
-                  <tr key={model.id} className="border-b border-gray-100 last:border-0">
-                    {i === 0 ? (
-                      <td className="py-3 text-sm text-gray-900 font-medium" rowSpan={group.models.length}>
-                        {group.label}
-                      </td>
-                    ) : null}
-                    <td className="py-3 text-sm text-gray-700 font-mono">
-                      {model.label}
-                      {model.recommended && (
-                        <span className="ml-2 text-xs text-[#064A6C] bg-teal-50 px-1.5 py-0.5 rounded">Default</span>
-                      )}
-                    </td>
-                    <td className="py-3 text-sm text-gray-900 text-right">
-                      ${(p.inputPer1k * p.margin).toFixed(4)}
-                    </td>
-                    <td className="py-3 text-sm text-gray-900 text-right">
-                      ${(p.outputPer1k * p.margin).toFixed(4)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Pricing</h2>
+      <p className="text-sm text-gray-500 mb-4">hostsblue uses prepaid credits for AI features. Usage is metered by request complexity.</p>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="border border-gray-200 rounded-[7px] p-4">
+          <div className="text-sm font-medium text-gray-900 mb-1">Simple Requests</div>
+          <div className="text-xs text-gray-500">Text edits, short generation</div>
+          <div className="text-lg font-semibold text-[#064A6C] mt-2">~$0.01</div>
+        </div>
+        <div className="border border-gray-200 rounded-[7px] p-4">
+          <div className="text-sm font-medium text-gray-900 mb-1">Standard Requests</div>
+          <div className="text-xs text-gray-500">Page generation, AI chat</div>
+          <div className="text-lg font-semibold text-[#064A6C] mt-2">~$0.02–0.05</div>
+        </div>
+        <div className="border border-gray-200 rounded-[7px] p-4">
+          <div className="text-sm font-medium text-gray-900 mb-1">Complex Requests</div>
+          <div className="text-xs text-gray-500">Full site generation, SEO</div>
+          <div className="text-lg font-semibold text-[#064A6C] mt-2">~$0.10–0.25</div>
+        </div>
       </div>
     </div>
   );
