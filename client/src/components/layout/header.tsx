@@ -329,11 +329,10 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
             )}
 
             {activeMenu === 'builder' && (
-              <div className="flex gap-0">
-                <div className="flex-[1.1] pr-8 border-r border-[#E5E7EB]/60">
-                  <span className="badge badge-ai text-[10px] mb-2">AI-POWERED</span>
+              <div className="flex">
+                <div className="flex-[3] min-w-0 pr-6">
                   <h3 className="text-base font-bold text-[#064A6C] mb-2">AI Website Builder</h3>
-                  <p className="text-sm text-[#4B5563] mb-3">Tell our AI about your business. It designs your site, writes the copy, picks the images, and builds it — while you watch.</p>
+                  <p className="text-sm text-[#4B5563] mb-3">Tell our AI about your business.<br />It designs, writes, and builds your site.<br />Ready in under 5 minutes.</p>
                   <ul className="space-y-1.5 text-sm text-[#4B5563] mb-3">
                     <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-[#064A6C]" /> AI setup in under 5 minutes</li>
                     <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-[#064A6C]" /> Writes all your content</li>
@@ -342,38 +341,36 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                   </ul>
                   <Link to="/website-builder" className="bg-[#064A6C] hover:bg-[#053A55] text-white text-sm font-medium px-4 py-2 rounded-[7px] transition-all btn-arrow-hover">Build My Site</Link>
                 </div>
-                <div className="flex-1 pl-8 flex gap-6">
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-[#064A6C] mb-3">Plans</h3>
-                    <div className="space-y-2.5">
-                      {[
-                        { name: 'Starter', detail: '1 site, 5 pages, AI-assisted', price: '$4.99/mo' },
-                        { name: 'Business', detail: '3 sites, e-commerce', price: '$14.99/mo', popular: true },
-                        { name: 'Professional', detail: '10 sites, white-label, API', price: '$29.99/mo' },
-                        { name: 'Agency', detail: '50 sites, client dashboard', price: '$79.99/mo', isNew: true },
-                      ].map((p: any) => (
-                        <div key={p.name} className="flex items-center justify-between text-sm">
-                          <div>
-                            <span className="font-medium text-[#09080E]">{p.name}</span>
-                            {p.popular && <span className="ml-2 badge badge-popular text-[10px]">POPULAR</span>}
-                            {p.isNew && <span className="ml-2 badge badge-new text-[10px]">NEW</span>}
-                            <p className="text-xs text-[#4B5563]">{p.detail}</p>
-                          </div>
-                          <span className="font-medium text-[#09080E]">{p.price}</span>
+                <div className="flex-[3] min-w-0 px-6 border-l border-r border-[#E5E7EB]/60">
+                  <h3 className="text-base font-bold text-[#064A6C] mb-3">Plans</h3>
+                  <div className="space-y-2.5">
+                    {[
+                      { name: 'Starter', detail: '1 site, 5 pages, AI-assisted', price: '$4.99/mo' },
+                      { name: 'Business', detail: '3 sites, e-commerce', price: '$14.99/mo', popular: true },
+                      { name: 'Professional', detail: '10 sites, white-label, API', price: '$29.99/mo' },
+                      { name: 'Agency', detail: '50 sites, client dashboard', price: '$79.99/mo', isNew: true },
+                    ].map((p: any) => (
+                      <div key={p.name} className="flex items-center justify-between text-sm">
+                        <div>
+                          <span className="font-medium text-[#09080E]">{p.name}</span>
+                          {p.popular && <span className="ml-2 badge badge-popular text-[10px]">POPULAR</span>}
+                          {p.isNew && <span className="ml-2 badge badge-new text-[10px]">NEW</span>}
+                          <p className="text-xs text-[#4B5563]">{p.detail}</p>
                         </div>
-                      ))}
-                    </div>
-                    <Link to="/website-builder" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Compare Plans <span className="arrow">&rarr;</span></Link>
+                        <span className="font-medium text-[#09080E] whitespace-nowrap ml-3">{p.price}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex-shrink-0">
-                    <h3 className="text-base font-bold text-[#064A6C] mb-3">200+ Templates</h3>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                      {['Business', 'Portfolio', 'Restaurant', 'Real Estate', 'E-Commerce', 'Blog', 'Agency', 'Health & Wellness', 'Education', 'Events', 'Photography', 'Landing Pages'].map((cat) => (
-                        <Link key={cat} to="/website-builder" className="text-sm text-[#4B5563] hover:text-[#064A6C] underline decoration-[#D1D5DB] underline-offset-2 hover:decoration-[#064A6C] transition-colors">{cat}</Link>
-                      ))}
-                    </div>
-                    <Link to="/website-builder" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Browse Templates <span className="arrow">&rarr;</span></Link>
+                  <Link to="/website-builder" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Compare Plans <span className="arrow">&rarr;</span></Link>
+                </div>
+                <div className="flex-[4] min-w-0 pl-6">
+                  <h3 className="text-base font-bold text-[#064A6C] mb-3">200+ Templates</h3>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    {['Business', 'Portfolio', 'Restaurant', 'Real Estate', 'E-Commerce', 'Blog', 'Agency', 'Health & Wellness', 'Education', 'Events', 'Photography', 'Landing Pages'].map((cat) => (
+                      <Link key={cat} to="/website-builder" className="text-sm text-[#4B5563] hover:text-[#064A6C] underline decoration-[#D1D5DB] underline-offset-2 hover:decoration-[#064A6C] transition-colors">{cat}</Link>
+                    ))}
                   </div>
+                  <Link to="/website-builder" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Browse Templates <span className="arrow">&rarr;</span></Link>
                 </div>
               </div>
             )}
