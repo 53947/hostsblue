@@ -1,45 +1,54 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, KeyRound, Ban, Trash2, ArrowUpCircle } from 'lucide-react';
-
-interface EmailAccount {
-  id: number;
-  address: string;
-  domain: string;
-  customer: string;
-  plan: string;
-  storageUsed: number;
-  storageTotal: number;
-  status: 'Active' | 'Suspended' | 'Inactive';
-}
-
-const emailAccounts: EmailAccount[] = [
-  { id: 1, address: 'sarah@mitchelldesign.com', domain: 'mitchelldesign.com', customer: 'Sarah Mitchell', plan: 'Pro', storageUsed: 4.2, storageTotal: 15, status: 'Active' },
-  { id: 2, address: 'james@chentech.io', domain: 'chentech.io', customer: 'James Chen', plan: 'Business', storageUsed: 12.8, storageTotal: 50, status: 'Active' },
-  { id: 3, address: 'dev@chentech.io', domain: 'chentech.io', customer: 'James Chen', plan: 'Business', storageUsed: 8.1, storageTotal: 50, status: 'Active' },
-  { id: 4, address: 'emily@brightpixel.co', domain: 'brightpixel.co', customer: 'Emily Rodriguez', plan: 'Pro', storageUsed: 6.5, storageTotal: 15, status: 'Active' },
-  { id: 5, address: 'info@lagosdigital.ng', domain: 'lagosdigital.ng', customer: 'Michael Okonkwo', plan: 'Starter', storageUsed: 1.3, storageTotal: 5, status: 'Active' },
-  { id: 6, address: 'priya@greenleafstudio.com', domain: 'greenleafstudio.com', customer: 'Priya Sharma', plan: 'Pro', storageUsed: 9.7, storageTotal: 15, status: 'Active' },
-  { id: 7, address: 'admin@kimstartups.com', domain: 'kimstartups.com', customer: 'David Kim', plan: 'Business', storageUsed: 22.4, storageTotal: 50, status: 'Suspended' },
-  { id: 8, address: 'laura@bennettlaw.com', domain: 'bennettlaw.com', customer: 'Laura Bennett', plan: 'Pro', storageUsed: 7.8, storageTotal: 15, status: 'Active' },
-  { id: 9, address: 'carlos@mendezgroup.mx', domain: 'mendezgroup.mx', customer: 'Carlos Mendez', plan: 'Business', storageUsed: 31.2, storageTotal: 50, status: 'Active' },
-  { id: 10, address: 'tom@wrightphoto.com', domain: 'wrightphoto.com', customer: 'Thomas Wright', plan: 'Pro', storageUsed: 11.6, storageTotal: 15, status: 'Active' },
-];
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Search, MoreHorizontal, Ban, CheckCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { panelApi } from '@/lib/api';
 
 const statusColors: Record<string, string> = {
-  Active: 'bg-[#10B981] text-white',
-  Suspended: 'bg-[#FFD700] text-[#09080E]',
-  Inactive: 'bg-gray-200 text-[#4B5563]',
+  active: 'bg-[#10B981] text-white',
+  suspended: 'bg-[#FFD700] text-[#09080E]',
+};
+
+const statusLabel: Record<string, string> = {
+  active: 'Active',
+  suspended: 'Suspended',
 };
 
 export function PanelEmailPage() {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
   const [openActions, setOpenActions] = useState<number | null>(null);
+  const limit = 15;
 
-  const filtered = emailAccounts.filter((e) =>
-    e.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.domain.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { data, isLoading } = useQuery({
+    queryKey: ['panel', 'email', { search: searchQuery, page, limit }],
+    queryFn: () =>
+      panelApi.getEmail({
+        search: searchQuery || undefined,
+        page,
+        limit,
+      }),
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: (id: number) => panelApi.suspendEmail(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel', 'email'] });
+      setOpenActions(null);
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => panelApi.activateEmail(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel', 'email'] });
+      setOpenActions(null);
+    },
+  });
+
+  const accounts = data?.accounts || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 1;
 
   return (
     <div className="space-y-6">
@@ -56,88 +65,167 @@ export function PanelEmailPage() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search email addresses, domains, or customers..."
             className="w-full pl-10 pr-4 py-2.5 border border-[#E5E7EB] rounded-[7px] text-[#09080E] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#064A6C] focus:border-transparent text-sm"
           />
         </div>
       </div>
 
-      {/* Email Table */}
-      <div className="bg-white border border-[#E5E7EB] rounded-[7px] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-sm text-[#4B5563] border-b border-[#E5E7EB] bg-[#F9FAFB]">
-                <th className="px-6 py-3 font-medium">Email Address</th>
-                <th className="px-6 py-3 font-medium">Domain</th>
-                <th className="px-6 py-3 font-medium">Customer</th>
-                <th className="px-6 py-3 font-medium">Plan</th>
-                <th className="px-6 py-3 font-medium min-w-[180px]">Storage</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((email) => {
-                const pct = Math.round((email.storageUsed / email.storageTotal) * 100);
-                const barColor = pct > 80 ? 'bg-[#DC2626]' : pct > 60 ? 'bg-[#FFD700]' : 'bg-[#10B981]';
-                return (
-                  <tr key={email.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-3 text-sm font-medium text-[#064A6C]">{email.address}</td>
-                    <td className="px-6 py-3 text-sm text-[#4B5563]">{email.domain}</td>
-                    <td className="px-6 py-3 text-sm text-[#09080E]">{email.customer}</td>
-                    <td className="px-6 py-3">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-[#1844A6]">
-                        {email.plan}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-xs text-[#4B5563] whitespace-nowrap">
-                          {email.storageUsed} / {email.storageTotal} GB
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[email.status]}`}>
-                        {email.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 relative">
-                      <button
-                        onClick={() => setOpenActions(openActions === email.id ? null : email.id)}
-                        className="p-1 hover:bg-gray-100 rounded"
-                      >
-                        <MoreHorizontal className="w-4 h-4 text-[#4B5563]" />
-                      </button>
-                      {openActions === email.id && (
-                        <div className="absolute right-6 top-10 bg-white border border-[#E5E7EB] rounded-[7px] shadow-lg py-1 z-10 w-44">
-                          <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2">
-                            <KeyRound className="w-4 h-4" /> Reset Password
-                          </button>
-                          <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2">
-                            <Ban className="w-4 h-4" /> Suspend
-                          </button>
-                          <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2">
-                            <ArrowUpCircle className="w-4 h-4" /> Change Plan
-                          </button>
-                          <button className="w-full text-left px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 flex items-center gap-2">
-                            <Trash2 className="w-4 h-4" /> Delete
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Loading */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 text-[#064A6C] animate-spin" />
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Email Table */}
+          <div className="bg-white border border-[#E5E7EB] rounded-[7px] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-sm text-[#4B5563] border-b border-[#E5E7EB] bg-[#F9FAFB]">
+                    <th className="px-6 py-3 font-medium">Email Address</th>
+                    <th className="px-6 py-3 font-medium">Domain</th>
+                    <th className="px-6 py-3 font-medium">Customer</th>
+                    <th className="px-6 py-3 font-medium">Plan</th>
+                    <th className="px-6 py-3 font-medium min-w-[180px]">Storage</th>
+                    <th className="px-6 py-3 font-medium">Status</th>
+                    <th className="px-6 py-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-[#4B5563]">
+                        No email accounts found
+                      </td>
+                    </tr>
+                  ) : (
+                    accounts.map((email: any) => {
+                      const usedMB = email.storageUsedMB || 0;
+                      const limitMB = email.storageLimitMB || 1;
+                      const pct = Math.round((usedMB / limitMB) * 100);
+                      const barColor = pct > 80 ? 'bg-[#DC2626]' : pct > 60 ? 'bg-[#FFD700]' : 'bg-[#10B981]';
+                      const usedLabel = usedMB >= 1024 ? `${(usedMB / 1024).toFixed(1)} GB` : `${usedMB} MB`;
+                      const limitLabel = limitMB >= 1024 ? `${(limitMB / 1024).toFixed(1)} GB` : `${limitMB} MB`;
+
+                      return (
+                        <tr key={email.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-3 text-sm font-medium text-[#064A6C]">{email.emailAddress}</td>
+                          <td className="px-6 py-3 text-sm text-[#4B5563]">{email.domain}</td>
+                          <td className="px-6 py-3">
+                            <div className="text-sm text-[#09080E]">{email.customerName}</div>
+                            <div className="text-xs text-[#4B5563]">{email.customerEmail}</div>
+                          </td>
+                          <td className="px-6 py-3">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-[#1844A6]">
+                              {email.plan}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                              </div>
+                              <span className="text-xs text-[#4B5563] whitespace-nowrap">
+                                {usedLabel} / {limitLabel}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[email.status] || 'bg-gray-200 text-[#4B5563]'}`}>
+                              {statusLabel[email.status] || email.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3 relative">
+                            <button
+                              onClick={() => setOpenActions(openActions === email.id ? null : email.id)}
+                              className="p-1 hover:bg-gray-100 rounded"
+                            >
+                              <MoreHorizontal className="w-4 h-4 text-[#4B5563]" />
+                            </button>
+                            {openActions === email.id && (
+                              <div className="absolute right-6 top-10 bg-white border border-[#E5E7EB] rounded-[7px] shadow-lg py-1 z-10 w-44">
+                                {email.status === 'active' ? (
+                                  <button
+                                    onClick={() => suspendMutation.mutate(email.id)}
+                                    disabled={suspendMutation.isPending}
+                                    className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                                  >
+                                    {suspendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                                    Suspend
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => activateMutation.mutate(email.id)}
+                                    disabled={activateMutation.isPending}
+                                    className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                                  >
+                                    {activateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                    Activate
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white border border-[#E5E7EB] rounded-[7px] px-6 py-3">
+              <p className="text-sm text-[#4B5563]">
+                Showing {(page - 1) * limit + 1}--{Math.min(page * limit, total)} of {total} accounts
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-2 rounded-[7px] border border-[#E5E7EB] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4 text-[#4B5563]" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .map((p, idx, arr) => (
+                    <span key={p}>
+                      {idx > 0 && arr[idx - 1] !== p - 1 && (
+                        <span className="px-1 text-[#4B5563]">...</span>
+                      )}
+                      <button
+                        onClick={() => setPage(p)}
+                        className={`w-8 h-8 rounded-[7px] text-sm font-medium transition-colors ${
+                          p === page
+                            ? 'bg-[#064A6C] text-white'
+                            : 'text-[#4B5563] hover:bg-gray-100'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </span>
+                  ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-2 rounded-[7px] border border-[#E5E7EB] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4 text-[#4B5563]" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

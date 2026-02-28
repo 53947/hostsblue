@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Filter, MoreHorizontal, ArrowUpCircle, Ban, RotateCcw, FileText,
+  Filter, MoreHorizontal, Ban, CheckCircle,
   Server, Cloud, MapPin, Globe, Power, PowerOff, Trash2, Loader2,
-  Camera, Key, AlertTriangle, X,
+  RotateCcw, AlertTriangle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { panelApi } from '@/lib/api';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 async function adminFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -19,39 +20,19 @@ async function adminFetch<T>(endpoint: string, options: RequestInit = {}): Promi
 }
 
 // ============================================================================
-// SHARED HOSTING TAB (sample data — same as before)
+// STATUS COLORS
 // ============================================================================
 
-const planFilters = ['All Plans', 'Starter', 'Business', 'Enterprise'];
-const statusFilters = ['All', 'Active', 'Suspended', 'Cancelled'];
-
-interface HostingAccount {
-  id: number;
-  domain: string;
-  customer: string;
-  plan: string;
-  storageUsed: number;
-  storageTotal: number;
-  status: 'Active' | 'Suspended' | 'Cancelled';
-}
-
-const accounts: HostingAccount[] = [
-  { id: 1, domain: 'mitchelldesign.com', customer: 'Sarah Mitchell', plan: 'Business', storageUsed: 12.4, storageTotal: 50, status: 'Active' },
-  { id: 2, domain: 'chentech.io', customer: 'James Chen', plan: 'Enterprise', storageUsed: 68.2, storageTotal: 200, status: 'Active' },
-  { id: 3, domain: 'brightpixel.co', customer: 'Emily Rodriguez', plan: 'Business', storageUsed: 23.7, storageTotal: 50, status: 'Active' },
-  { id: 4, domain: 'lagosdigital.ng', customer: 'Michael Okonkwo', plan: 'Starter', storageUsed: 3.2, storageTotal: 10, status: 'Active' },
-  { id: 5, domain: 'greenleafstudio.com', customer: 'Priya Sharma', plan: 'Business', storageUsed: 41.8, storageTotal: 50, status: 'Active' },
-  { id: 6, domain: 'kimstartups.com', customer: 'David Kim', plan: 'Enterprise', storageUsed: 95.1, storageTotal: 200, status: 'Suspended' },
-  { id: 7, domain: 'bennettlaw.com', customer: 'Laura Bennett', plan: 'Business', storageUsed: 8.9, storageTotal: 50, status: 'Active' },
-  { id: 8, domain: 'mendezgroup.mx', customer: 'Carlos Mendez', plan: 'Enterprise', storageUsed: 142.5, storageTotal: 200, status: 'Active' },
-  { id: 9, domain: 'wrightphoto.com', customer: 'Thomas Wright', plan: 'Business', storageUsed: 38.6, storageTotal: 50, status: 'Active' },
-  { id: 10, domain: 'tanakamedia.jp', customer: 'Robert Tanaka', plan: 'Business', storageUsed: 27.3, storageTotal: 50, status: 'Active' },
-];
-
 const hostingStatusColors: Record<string, string> = {
-  Active: 'bg-[#10B981] text-white',
-  Suspended: 'bg-[#FFD700] text-[#09080E]',
-  Cancelled: 'bg-[#DC2626] text-white',
+  active: 'bg-[#10B981] text-white',
+  suspended: 'bg-[#FFD700] text-[#09080E]',
+  cancelled: 'bg-[#DC2626] text-white',
+};
+
+const hostingStatusLabel: Record<string, string> = {
+  active: 'Active',
+  suspended: 'Suspended',
+  cancelled: 'Cancelled',
 };
 
 const cloudStatusColors: Record<string, string> = {
@@ -61,6 +42,13 @@ const cloudStatusColors: Record<string, string> = {
   terminated: 'bg-gray-100 text-gray-500',
   failed: 'bg-red-100 text-red-700',
 };
+
+const statusFilters = [
+  { label: 'All', value: '' },
+  { label: 'Active', value: 'active' },
+  { label: 'Suspended', value: 'suspended' },
+  { label: 'Cancelled', value: 'cancelled' },
+];
 
 // ============================================================================
 // MAIN PAGE
@@ -102,119 +90,245 @@ export function PanelHostingPage() {
 }
 
 // ============================================================================
-// SHARED HOSTING TAB
+// SHARED HOSTING TAB (real API via panelApi)
 // ============================================================================
 
 function SharedHostingTab() {
-  const [activePlan, setActivePlan] = useState('All Plans');
-  const [activeStatus, setActiveStatus] = useState('All');
+  const queryClient = useQueryClient();
+  const [activeStatus, setActiveStatus] = useState('');
+  const [planFilter, setPlanFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [openActions, setOpenActions] = useState<number | null>(null);
+  const limit = 15;
 
-  const filtered = accounts.filter((a) => {
-    const matchesPlan = activePlan === 'All Plans' || a.plan === activePlan;
-    const matchesStatus = activeStatus === 'All' || a.status === activeStatus;
-    return matchesPlan && matchesStatus;
+  const { data, isLoading } = useQuery({
+    queryKey: ['panel', 'hosting', { status: activeStatus, page, limit }],
+    queryFn: () =>
+      panelApi.getHosting({
+        status: activeStatus || undefined,
+        page,
+        limit,
+      }),
   });
+
+  const suspendMutation = useMutation({
+    mutationFn: (id: number) => panelApi.suspendHosting(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel', 'hosting'] });
+      setOpenActions(null);
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => panelApi.activateHosting(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel', 'hosting'] });
+      setOpenActions(null);
+    },
+  });
+
+  const allAccounts = data?.accounts || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 1;
+
+  // Client-side plan slug filter (text match on planSlug)
+  const accounts = planFilter
+    ? allAccounts.filter((a: any) => a.planSlug?.toLowerCase().includes(planFilter.toLowerCase()))
+    : allAccounts;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 text-[#064A6C] animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
+      {/* Filters */}
       <div className="bg-white border border-[#E5E7EB] rounded-[7px] p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-[#4B5563]" />
-          <span className="text-sm text-[#4B5563] mr-1">Plan:</span>
-          {planFilters.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActivePlan(filter)}
-              className={`px-3 py-1.5 rounded-[7px] text-sm font-medium transition-colors ${
-                activePlan === filter ? 'bg-teal-50 text-[#064A6C]' : 'text-[#4B5563] hover:bg-gray-100'
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-4 h-4 text-[#4B5563]" />
           <span className="text-sm text-[#4B5563] mr-1">Status:</span>
           {statusFilters.map((filter) => (
             <button
-              key={filter}
-              onClick={() => setActiveStatus(filter)}
+              key={filter.value}
+              onClick={() => {
+                setActiveStatus(filter.value);
+                setPage(1);
+              }}
               className={`px-3 py-1.5 rounded-[7px] text-sm font-medium transition-colors ${
-                activeStatus === filter ? 'bg-teal-50 text-[#064A6C]' : 'text-[#4B5563] hover:bg-gray-100'
+                activeStatus === filter.value ? 'bg-teal-50 text-[#064A6C]' : 'text-[#4B5563] hover:bg-gray-100'
               }`}
             >
-              {filter}
+              {filter.label}
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-[#4B5563]" />
+          <span className="text-sm text-[#4B5563] mr-1">Plan:</span>
+          <input
+            type="text"
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+            placeholder="Filter by plan slug..."
+            className="px-3 py-1.5 border border-[#E5E7EB] rounded-[7px] text-sm text-[#09080E] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#064A6C] focus:border-transparent w-48"
+          />
+        </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white border border-[#E5E7EB] rounded-[7px] overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="text-left text-sm text-[#4B5563] border-b border-[#E5E7EB] bg-[#F9FAFB]">
-              <th className="px-6 py-3 font-medium">Domain</th>
-              <th className="px-6 py-3 font-medium">Customer</th>
-              <th className="px-6 py-3 font-medium">Plan</th>
-              <th className="px-6 py-3 font-medium min-w-[200px]">Storage</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((account) => {
-              const pct = Math.round((account.storageUsed / account.storageTotal) * 100);
-              const barColor = pct > 80 ? 'bg-[#DC2626]' : pct > 60 ? 'bg-[#FFD700]' : 'bg-[#10B981]';
-              return (
-                <tr key={account.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-3 text-sm font-medium text-[#064A6C]">{account.domain}</td>
-                  <td className="px-6 py-3 text-sm text-[#09080E]">{account.customer}</td>
-                  <td className="px-6 py-3">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-[#1844A6]">{account.plan}</span>
-                  </td>
-                  <td className="px-6 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-xs text-[#4B5563] whitespace-nowrap">{account.storageUsed} / {account.storageTotal} GB</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${hostingStatusColors[account.status]}`}>{account.status}</span>
-                  </td>
-                  <td className="px-6 py-3 relative">
-                    <button onClick={() => setOpenActions(openActions === account.id ? null : account.id)} className="p-1 hover:bg-gray-100 rounded">
-                      <MoreHorizontal className="w-4 h-4 text-[#4B5563]" />
-                    </button>
-                    {openActions === account.id && (
-                      <div className="absolute right-6 top-10 bg-white border border-[#E5E7EB] rounded-[7px] shadow-lg py-1 z-10 w-44">
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2"><ArrowUpCircle className="w-4 h-4" /> Upgrade</button>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2"><Ban className="w-4 h-4" /> Suspend</button>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Restart</button>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2"><FileText className="w-4 h-4" /> View Logs</button>
-                      </div>
-                    )}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-sm text-[#4B5563] border-b border-[#E5E7EB] bg-[#F9FAFB]">
+                <th className="px-6 py-3 font-medium">Domain</th>
+                <th className="px-6 py-3 font-medium">Customer</th>
+                <th className="px-6 py-3 font-medium">Plan</th>
+                <th className="px-6 py-3 font-medium min-w-[200px]">Storage</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-[#4B5563]">
+                    No hosting accounts found
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ) : (
+                accounts.map((account: any) => {
+                  const usedMB = account.diskUsageMB || 0;
+                  const limitMB = account.diskLimitMB || 1;
+                  const pct = Math.round((usedMB / limitMB) * 100);
+                  const barColor = pct > 80 ? 'bg-[#DC2626]' : pct > 60 ? 'bg-[#FFD700]' : 'bg-[#10B981]';
+                  const usedLabel = usedMB >= 1024 ? `${(usedMB / 1024).toFixed(1)} GB` : `${usedMB} MB`;
+                  const limitLabel = limitMB >= 1024 ? `${(limitMB / 1024).toFixed(1)} GB` : `${limitMB} MB`;
+
+                  return (
+                    <tr key={account.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-3 text-sm font-medium text-[#064A6C]">{account.domain}</td>
+                      <td className="px-6 py-3">
+                        <div className="text-sm text-[#09080E]">{account.customerName}</div>
+                        <div className="text-xs text-[#4B5563]">{account.customerEmail}</div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-[#1844A6]">
+                          {account.planSlug}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-[#4B5563] whitespace-nowrap">
+                            {usedLabel} / {limitLabel}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${hostingStatusColors[account.status] || 'bg-gray-200 text-[#4B5563]'}`}>
+                          {hostingStatusLabel[account.status] || account.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 relative">
+                        <button
+                          onClick={() => setOpenActions(openActions === account.id ? null : account.id)}
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <MoreHorizontal className="w-4 h-4 text-[#4B5563]" />
+                        </button>
+                        {openActions === account.id && (
+                          <div className="absolute right-6 top-10 bg-white border border-[#E5E7EB] rounded-[7px] shadow-lg py-1 z-10 w-44">
+                            {account.status === 'active' ? (
+                              <button
+                                onClick={() => suspendMutation.mutate(account.id)}
+                                disabled={suspendMutation.isPending}
+                                className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                              >
+                                {suspendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                                Suspend
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => activateMutation.mutate(account.id)}
+                                disabled={activateMutation.isPending}
+                                className="w-full text-left px-4 py-2 text-sm text-[#4B5563] hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                              >
+                                {activateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                Activate
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white border border-[#E5E7EB] rounded-[7px] px-6 py-3">
+          <p className="text-sm text-[#4B5563]">
+            Showing {(page - 1) * limit + 1}--{Math.min(page * limit, total)} of {total} accounts
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-[7px] border border-[#E5E7EB] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#4B5563]" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .map((p, idx, arr) => (
+                <span key={p}>
+                  {idx > 0 && arr[idx - 1] !== p - 1 && (
+                    <span className="px-1 text-[#4B5563]">...</span>
+                  )}
+                  <button
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-[7px] text-sm font-medium transition-colors ${
+                      p === page
+                        ? 'bg-[#064A6C] text-white'
+                        : 'text-[#4B5563] hover:bg-gray-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </span>
+              ))}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-[7px] border border-[#E5E7EB] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 text-[#4B5563]" />
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 // ============================================================================
-// CLOUD SERVERS TAB (Admin — full infrastructure detail)
+// CLOUD SERVERS TAB (Admin -- kept with existing adminFetch pattern)
 // ============================================================================
 
 function CloudServersTab() {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<any>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: string; server: any } | null>(null);
   const [terminateName, setTerminateName] = useState('');
 
@@ -238,7 +352,6 @@ function CloudServersTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panel', 'cloud-servers'] });
       setConfirmAction(null);
-      setSelected(null);
       setTerminateName('');
     },
   });
@@ -304,7 +417,7 @@ function CloudServersTab() {
                 <td className="px-4 py-3 text-gray-600">{s.customerEmail || `#${s.customerId}`}</td>
                 <td className="px-4 py-3 text-gray-600 capitalize">{s.planSlug?.replace('cloud-', '')}</td>
                 <td className="px-4 py-3 text-xs text-gray-500">
-                  {s.cpu} · {s.ramMB ? `${(s.ramMB / 1024).toFixed(0)}GB` : '—'} · {s.diskGB || '—'}GB
+                  {s.cpu} · {s.ramMB ? `${(s.ramMB / 1024).toFixed(0)}GB` : '--'} · {s.diskGB || '--'}GB
                 </td>
                 <td className="px-4 py-3">
                   <span className="flex items-center gap-1 text-gray-500 text-xs"><MapPin className="w-3 h-3" />{s.datacenter}</span>
