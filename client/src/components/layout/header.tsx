@@ -117,8 +117,8 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
           <div className="max-w-[1200px] mx-auto px-8 py-8">
             {activeMenu === 'domains' && (
               <div>
-                <div className="grid grid-cols-3 gap-8">
-                  <div>
+                <div className="flex">
+                  <div className="flex-1 pr-8 border-r border-[#E5E7EB]/60">
                     <h3 className="text-base font-bold text-[#064A6C] mb-3">Register New</h3>
                     <form onSubmit={(e) => { e.preventDefault(); }} className="flex gap-2 mb-3">
                       <div className="flex-1 relative">
@@ -130,7 +130,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                     <p className="text-xs text-[#4B5563]">700+ TLDs available</p>
                     <Link to="/domains/search" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Search Domains <span className="arrow">&rarr;</span></Link>
                   </div>
-                  <div>
+                  <div className="flex-1 px-8 border-r border-[#E5E7EB]/60">
                     <h3 className="text-base font-bold text-[#064A6C] mb-3">Transfer Existing</h3>
                     <p className="text-sm text-[#4B5563] mb-3">Bring your domain home. Free WHOIS privacy, no downtime.</p>
                     <p className="text-xs text-[#4B5563] mb-3">Enter your domain + authorization code to start</p>
@@ -140,7 +140,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                     </div>
                     <Link to="/domains/transfer" className="text-sm font-medium text-[#064A6C] inline-flex items-center gap-1 arrow-link">Start Transfer <span className="arrow">&rarr;</span></Link>
                   </div>
-                  <div>
+                  <div className="flex-1 pl-8">
                     <h3 className="text-base font-bold text-[#064A6C] mb-3">Renew Existing</h3>
                     <p className="text-sm text-[#4B5563] mb-3">Keep the dream alive. Bulk renewal, auto-renew setup.</p>
                     <ul className="space-y-1.5 text-sm text-[#4B5563] mb-3">
@@ -166,8 +166,8 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
 
             {activeMenu === 'hosting' && (
               <div>
-                <div className="grid grid-cols-3 gap-8">
-                  <div>
+                <div className="flex">
+                  <div className="flex-1 pr-8 border-r border-[#E5E7EB]/60">
                     <h3 className="text-base font-bold text-[#064A6C] mb-1">WordPress Hosting</h3>
                     <p className="text-xs text-[#4B5563] mb-3">Managed WordPress, optimized for speed</p>
                     <div className="space-y-2.5">
@@ -189,7 +189,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                     </div>
                     <Link to="/hosting" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Compare WordPress Plans <span className="arrow">&rarr;</span></Link>
                   </div>
-                  <div>
+                  <div className="flex-1 px-8 border-r border-[#E5E7EB]/60">
                     <h3 className="text-base font-bold text-[#064A6C] mb-1">Cloud Hosting</h3>
                     <p className="text-xs text-[#4B5563] mb-3">Deploy apps with managed infrastructure</p>
                     <div className="space-y-2.5">
@@ -210,7 +210,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                     </div>
                     <Link to="/hosting/cloud" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Explore Cloud Hosting <span className="arrow">&rarr;</span></Link>
                   </div>
-                  <div>
+                  <div className="flex-1 pl-8">
                     <h3 className="text-base font-bold text-[#064A6C] mb-1">Managed VPS</h3>
                     <p className="text-xs text-[#4B5563] mb-3">Root-level control with expert support</p>
                     <p className="text-sm text-[#4B5563] mb-3">Full server access with managed security, updates, and monitoring.</p>
@@ -230,8 +230,8 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
             )}
 
             {activeMenu === 'email' && (
-              <div className="grid grid-cols-3 gap-8">
-                <div>
+              <div className="flex">
+                <div className="flex-1 pr-8 border-r border-[#E5E7EB]/60">
                   <h3 className="text-base font-bold text-[#064A6C] mb-1">Business Email</h3>
                   <p className="text-xs text-[#4B5563] mb-3">Professional email on your domain</p>
                   <div className="space-y-2.5">
@@ -252,7 +252,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                   </div>
                   <Link to="/email" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Choose Email Plan <span className="arrow">&rarr;</span></Link>
                 </div>
-                <div>
+                <div className="flex-1 px-8 border-r border-[#E5E7EB]/60">
                   <h3 className="text-base font-bold text-[#064A6C] mb-3">Features</h3>
                   <ul className="space-y-2 text-sm text-[#4B5563]">
                     {['Advanced spam filtering', 'Virus protection', 'Webmail access', 'Mobile sync (ActiveSync)', 'Shared calendar & contacts', 'Auto-responders & aliases', '99.9% uptime guarantee'].map((f) => (
@@ -260,7 +260,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                     ))}
                   </ul>
                 </div>
-                <div>
+                <div className="flex-1 pl-8">
                   <h3 className="text-base font-bold text-[#064A6C] mb-3">Email Migration</h3>
                   <p className="text-sm text-[#4B5563] mb-3">Moving from Gmail, Outlook, or another provider? We migrate your email for free.</p>
                   <ul className="space-y-2 text-sm text-[#4B5563]">
@@ -274,8 +274,8 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
             )}
 
             {activeMenu === 'security' && (
-              <div className="grid grid-cols-3 gap-8">
-                <div>
+              <div className="flex">
+                <div className="flex-1 pr-8 border-r border-[#E5E7EB]/60">
                   <h3 className="text-base font-bold text-[#064A6C] mb-3">SSL Certificates</h3>
                   <div className="space-y-2.5">
                     {[
@@ -296,7 +296,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                   </div>
                   <Link to="/security" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Compare SSL Options <span className="arrow">&rarr;</span></Link>
                 </div>
-                <div>
+                <div className="flex-1 px-8 border-r border-[#E5E7EB]/60">
                   <h3 className="text-base font-bold text-[#064A6C] mb-3">SiteLock Security</h3>
                   <div className="space-y-2.5">
                     {[
@@ -316,7 +316,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                   </div>
                   <Link to="/security" className="text-sm font-medium text-[#064A6C] mt-3 inline-flex items-center gap-1 arrow-link">Protect Your Site <span className="arrow">&rarr;</span></Link>
                 </div>
-                <div>
+                <div className="flex-1 pl-8">
                   <h3 className="text-base font-bold text-[#064A6C] mb-3">Backup & Recovery</h3>
                   <ul className="space-y-2 text-sm text-[#4B5563]">
                     {['Daily automated backups', 'One-click restore', 'Off-site encrypted storage', '30-day retention', 'File-level recovery'].map((f) => (
