@@ -1,22 +1,34 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { panelApi } from '@/lib/api';
 import {
-  Users, Globe, Server, Cloud, Palette, DollarSign,
+  Users, Globe, Server, Clock, DollarSign, TrendingUp, TrendingDown,
   ShoppingCart, Plus, Headphones, Loader2,
+  AlertTriangle, ShieldAlert, MessageSquare, CreditCard,
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
-async function adminFetch<T>(endpoint: string): Promise<T> {
-  const res = await fetch(`${API_URL}/api/v1${endpoint}`, { credentials: 'include' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to fetch');
-  return data.data;
-}
+const statusBadge = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return 'bg-[#10B981] text-white';
+    case 'pending':
+    case 'pending_payment':
+      return 'bg-[#FFD700] text-[#09080E]';
+    case 'failed':
+      return 'bg-[#DC2626] text-white';
+    case 'processing':
+      return 'bg-[#3B82F6] text-white';
+    case 'refunded':
+      return 'bg-gray-200 text-[#4B5563]';
+    default:
+      return 'bg-gray-100 text-gray-600';
+  }
+};
 
 export function PanelOverviewPage() {
   const { data: panelStats, isLoading } = useQuery({
     queryKey: ['panel', 'overview-stats'],
-    queryFn: () => adminFetch<any>('/admin/overview'),
+    queryFn: () => panelApi.getStats(),
   });
 
   if (isLoading) {
@@ -27,10 +39,18 @@ export function PanelOverviewPage() {
     );
   }
 
+  const monthlyRevenue = (panelStats?.monthlyRevenue || 0) / 100;
+  const lastMonthRevenue = (panelStats?.lastMonthRevenue || 0) / 100;
+  const revenueChange = lastMonthRevenue > 0
+    ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+    : monthlyRevenue > 0 ? 100 : 0;
+  const revenueUp = revenueChange >= 0;
+
   const stats = [
     {
       label: 'Customers',
-      value: panelStats?.customers?.toLocaleString() || '0',
+      value: (panelStats?.totalCustomers || 0).toLocaleString(),
+      sub: `${panelStats?.newCustomersThisMonth || 0} new this month`,
       icon: Users,
       iconBg: 'bg-blue-50',
       iconColor: 'text-[#1844A6]',
@@ -38,7 +58,7 @@ export function PanelOverviewPage() {
     },
     {
       label: 'Domains',
-      value: panelStats?.domains?.toLocaleString() || '0',
+      value: (panelStats?.activeDomains || 0).toLocaleString(),
       icon: Globe,
       iconBg: 'bg-teal-50',
       iconColor: 'text-[#064A6C]',
@@ -46,37 +66,45 @@ export function PanelOverviewPage() {
     },
     {
       label: 'Hosting',
-      value: panelStats?.hosting?.toLocaleString() || '0',
+      value: (panelStats?.activeHosting || 0).toLocaleString(),
       icon: Server,
       iconBg: 'bg-green-50',
       iconColor: 'text-[#10B981]',
       link: '/panel/hosting',
     },
     {
-      label: 'Cloud Servers',
-      value: panelStats?.cloudServers?.toLocaleString() || '0',
-      icon: Cloud,
-      iconBg: 'bg-purple-50',
-      iconColor: 'text-purple-600',
-      link: '/panel/cloud',
-    },
-    {
-      label: 'Websites',
-      value: panelStats?.builderProjects?.toLocaleString() || '0',
-      icon: Palette,
-      iconBg: 'bg-orange-50',
-      iconColor: 'text-orange-600',
-      link: '/panel/builder',
+      label: 'Pending Hosting',
+      value: (panelStats?.pendingHosting || 0).toLocaleString(),
+      icon: Clock,
+      iconBg: 'bg-yellow-50',
+      iconColor: 'text-[#D97706]',
+      link: '/panel/hosting',
     },
     {
       label: 'Monthly Revenue',
-      value: `$${((panelStats?.monthlyRevenue || 0) / 100).toFixed(0)}`,
+      value: `$${monthlyRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: DollarSign,
-      iconBg: 'bg-yellow-50',
-      iconColor: 'text-[#D97706]',
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-[#10B981]',
+      link: '/panel/revenue',
+    },
+    {
+      label: 'Revenue Change',
+      value: `${revenueUp ? '+' : ''}${revenueChange.toFixed(1)}%`,
+      icon: revenueUp ? TrendingUp : TrendingDown,
+      iconBg: revenueUp ? 'bg-green-50' : 'bg-red-50',
+      iconColor: revenueUp ? 'text-[#10B981]' : 'text-[#DC2626]',
       link: '/panel/revenue',
     },
   ];
+
+  const alerts = panelStats?.alerts;
+  const alertItems = [
+    { label: 'Expiring Domains', count: alerts?.expiringDomains || 0, color: 'bg-orange-100 text-orange-700', icon: AlertTriangle },
+    { label: 'Expiring SSL', count: alerts?.expiringSSL || 0, color: 'bg-red-100 text-red-700', icon: ShieldAlert },
+    { label: 'Open Tickets', count: alerts?.openTickets || 0, color: 'bg-blue-100 text-blue-700', icon: MessageSquare },
+    { label: 'Failed Payments', count: alerts?.failedPayments || 0, color: 'bg-rose-100 text-rose-700', icon: CreditCard },
+  ].filter((a) => a.count > 0);
 
   return (
     <div className="space-y-8">
@@ -100,16 +128,40 @@ export function PanelOverviewPage() {
               </div>
               <h3 className="text-2xl font-bold text-[#09080E] mb-0.5">{stat.value}</h3>
               <p className="text-[#4B5563] text-xs">{stat.label}</p>
+              {'sub' in stat && stat.sub && (
+                <p className="text-[#4B5563] text-[10px] mt-1 opacity-70">{stat.sub}</p>
+              )}
             </Link>
           );
         })}
       </div>
 
+      {/* Alerts */}
+      {alertItems.length > 0 && (
+        <div className="bg-white border border-[#E5E7EB] rounded-[7px] p-6">
+          <h2 className="text-lg font-semibold text-[#09080E] mb-4">Alerts</h2>
+          <div className="flex flex-wrap gap-3">
+            {alertItems.map((alert) => {
+              const Icon = alert.icon;
+              return (
+                <span
+                  key={alert.label}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-[7px] text-sm font-medium ${alert.color}`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {alert.count} {alert.label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="flex items-center gap-3">
         <Link
           to="/panel/customers"
-          className="bg-[#064A6C] hover:bg-[#053A55] text-white font-medium px-4 py-2.5 rounded-[7px] transition-colors flex items-center gap-2 text-sm"
+          className="bg-[#064A6C] hover:bg-[#053C58] text-white font-medium px-4 py-2.5 rounded-[7px] transition-colors flex items-center gap-2 text-sm"
         >
           <Plus className="w-4 h-4" />
           Add Customer
@@ -140,7 +192,7 @@ export function PanelOverviewPage() {
               </div>
               <h2 className="text-lg font-semibold text-[#09080E]">Recent Orders</h2>
             </div>
-            <Link to="/panel/orders" className="text-sm text-[#064A6C] hover:text-[#053A55] font-medium">
+            <Link to="/panel/orders" className="text-sm text-[#064A6C] hover:text-[#053C58] font-medium">
               View All
             </Link>
           </div>
@@ -159,19 +211,16 @@ export function PanelOverviewPage() {
                 {panelStats.recentOrders.map((order: any) => (
                   <tr key={order.id || order.orderNumber} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="py-3 text-sm font-medium text-[#064A6C]">{order.orderNumber}</td>
-                    <td className="py-3 text-sm text-[#09080E]">{order.customerEmail || '—'}</td>
+                    <td className="py-3 text-sm text-[#09080E]">{order.customerName || order.customerEmail || '\u2014'}</td>
                     <td className="py-3 text-sm font-medium text-[#09080E]">${((order.total || 0) / 100).toFixed(2)}</td>
                     <td className="py-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        order.status === 'completed' ? 'bg-[#10B981] text-white' :
-                        order.status === 'pending' || order.status === 'pending_payment' ? 'bg-[#FFD700] text-[#09080E]' :
-                        order.status === 'failed' ? 'bg-[#DC2626] text-white' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge(order.status)}`}>
                         {order.status?.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="py-3 text-sm text-[#4B5563]">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}</td>
+                    <td className="py-3 text-sm text-[#4B5563]">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '\u2014'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
