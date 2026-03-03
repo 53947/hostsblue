@@ -447,6 +447,11 @@ export const panelApi = {
 
   // Search
   search: (q: string) => fetchPanel<any>(`/search?q=${encodeURIComponent(q)}`),
+
+  // Payment provider
+  getPaymentProvider: () => fetchApi<any>('/admin/settings/payment-provider'),
+  switchPaymentProvider: (provider: string) =>
+    fetchApi<any>('/admin/settings/payment-provider', { method: 'PATCH', body: JSON.stringify({ provider }) }),
 };
 
 export { ApiError };

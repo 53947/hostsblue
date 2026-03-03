@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { panelApi } from '@/lib/api';
 import {
   Key, Mail, Building2, CreditCard, Eye, EyeOff, Save, ChevronDown, ChevronUp,
-  Loader2, Check, X,
+  Loader2, Check, X, ArrowLeftRight, AlertTriangle,
 } from 'lucide-react';
 
 interface Template {
@@ -51,6 +51,29 @@ export function PanelSettingsPage() {
   const [taxRate, setTaxRate] = useState('0');
   const [paymentTerms, setPaymentTerms] = useState('Net 30');
   const [billingSuccess, setBillingSuccess] = useState('');
+
+  // Payment provider state
+  const [paymentSuccess, setPaymentSuccess] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+
+  const paymentProviderQuery = useQuery({
+    queryKey: ['payment-provider'],
+    queryFn: () => panelApi.getPaymentProvider(),
+  });
+
+  const switchProviderMutation = useMutation({
+    mutationFn: (provider: string) => panelApi.switchPaymentProvider(provider),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-provider'] });
+      setPaymentSuccess(data.message || 'Payment provider switched');
+      setPaymentError('');
+      clearSuccessAfterDelay(setPaymentSuccess);
+    },
+    onError: (err: any) => {
+      setPaymentError(err.message || 'Failed to switch provider');
+      setPaymentSuccess('');
+    },
+  });
 
   // Template state
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
@@ -459,6 +482,76 @@ export function PanelSettingsPage() {
           </button>
           {platformSuccess && <SuccessMessage message={platformSuccess} />}
         </div>
+      </div>
+
+      {/* Payment Gateway */}
+      <div className="bg-white border border-[#E5E7EB] rounded-[7px] p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
+            <ArrowLeftRight className="w-5 h-5 text-[#064A6C]" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[#09080E]">Payment Gateway</h2>
+            <p className="text-sm text-[#4B5563]">Switch between payment providers instantly</p>
+          </div>
+        </div>
+        {paymentProviderQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-[#4B5563]">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+          </div>
+        ) : (
+          <div className="max-w-md space-y-4">
+            {(paymentProviderQuery.data?.providers ?? []).map((p: any) => {
+              const isActive = paymentProviderQuery.data?.activeProvider === p.name;
+              return (
+                <button
+                  key={p.name}
+                  disabled={isActive || !p.available || switchProviderMutation.isPending}
+                  onClick={() => switchProviderMutation.mutate(p.name)}
+                  className={`w-full flex items-center justify-between p-4 rounded-[7px] border-2 transition-colors text-left ${
+                    isActive
+                      ? 'border-[#064A6C] bg-[#064A6C]/5'
+                      : p.available
+                        ? 'border-[#E5E7EB] hover:border-[#064A6C]/50 cursor-pointer'
+                        : 'border-[#E5E7EB] opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div>
+                    <span className="font-medium text-[#09080E]">{p.label}</span>
+                    {!p.available && (
+                      <span className="ml-2 text-xs text-amber-600 font-medium">Keys not configured</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {switchProviderMutation.isPending && switchProviderMutation.variables === p.name ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-[#064A6C]" />
+                    ) : isActive ? (
+                      <span className="text-xs font-medium text-white bg-[#064A6C] px-2.5 py-1 rounded-[7px]">Active</span>
+                    ) : p.available ? (
+                      <span className="text-xs text-[#4B5563]">Click to activate</span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+            {!paymentProviderQuery.data?.stripeConfigured && (
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-[7px]">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800">
+                  To enable Stripe, add <code className="font-mono bg-amber-100 px-1 rounded">STRIPE_SECRET_KEY</code> and{' '}
+                  <code className="font-mono bg-amber-100 px-1 rounded">STRIPE_WEBHOOK_SECRET</code> to your environment variables.
+                </p>
+              </div>
+            )}
+            {paymentSuccess && <SuccessMessage message={paymentSuccess} />}
+            {paymentError && (
+              <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
+                <X className="w-4 h-4" />
+                <span>{paymentError}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Billing Settings */}

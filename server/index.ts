@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm';
 import * as schema from '../shared/schema.js';
 import { registerRoutes } from './routes.js';
 import { registerWidgetRoutes } from './routes/widget.js';
+import { loadActiveProviderFromDB } from './services/payment/payment-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -175,6 +176,9 @@ app.use(async (req, res, next) => {
 // Register all API routes
 registerRoutes(app, db);
 registerWidgetRoutes(app, db as any);
+
+// Load payment provider setting from DB (non-blocking)
+loadActiveProviderFromDB().catch(() => {});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -8,7 +8,8 @@ import { rateLimiter } from './middleware/rate-limit.js';
 import { OpenSRSIntegration } from './services/opensrs-integration.js';
 import { WPMUDevIntegration } from './services/wpmudev-integration.js';
 import { SwipesBluePayment } from './services/swipesblue-payment.js';
-import { getPaymentProvider, getActiveProviderName } from './services/payment/payment-service.js';
+import { getPaymentProvider, getActiveProviderName, setActiveProvider, loadActiveProviderFromDB } from './services/payment/payment-service.js';
+import type { PaymentProviderName } from './services/payment/payment-service.js';
 import { EmailService } from './services/email-service.js';
 import { OpenSRSEmailIntegration } from './services/opensrs-email-integration.js';
 import { OpenSRSSSLIntegration } from './services/opensrs-ssl-integration.js';
@@ -4531,7 +4532,37 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
 
   app.get('/api/v1/admin/settings/payment-provider', authenticateToken, requireAuth, asyncHandler(async (req, res) => {
     if (!req.user!.isAdmin) return res.status(403).json(errorResponse('Admin only'));
-    res.json(successResponse({ activeProvider: getActiveProviderName() }));
+    const stripeConfigured = !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+    res.json(successResponse({
+      activeProvider: getActiveProviderName(),
+      stripeConfigured,
+      providers: [
+        { name: 'swipesblue', label: 'swipesblue', available: true },
+        { name: 'stripe', label: 'Stripe', available: stripeConfigured },
+      ],
+    }));
+  }));
+
+  app.patch('/api/v1/admin/settings/payment-provider', authenticateToken, requireAuth, asyncHandler(async (req, res) => {
+    if (!req.user!.isAdmin) return res.status(403).json(errorResponse('Admin only'));
+
+    const { provider } = req.body;
+    if (!provider || !['swipesblue', 'stripe'].includes(provider)) {
+      return res.status(400).json(errorResponse('Invalid provider. Must be "swipesblue" or "stripe".'));
+    }
+
+    // If switching to Stripe, verify keys are configured
+    if (provider === 'stripe') {
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return res.status(400).json(errorResponse('Cannot switch to Stripe: STRIPE_SECRET_KEY is not set. Add it to your environment variables first.'));
+      }
+      if (!process.env.STRIPE_WEBHOOK_SECRET) {
+        return res.status(400).json(errorResponse('Cannot switch to Stripe: STRIPE_WEBHOOK_SECRET is not set. Add it to your environment variables first.'));
+      }
+    }
+
+    await setActiveProvider(provider as PaymentProviderName);
+    res.json(successResponse({ activeProvider: provider }, `Payment provider switched to ${provider}`));
   }));
 
   // Validation error handler
