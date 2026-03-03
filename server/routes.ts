@@ -470,6 +470,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       postalCode: customer.postalCode,
       countryCode: customer.countryCode,
       emailVerified: customer.emailVerified,
+      isAdmin: customer.isAdmin,
     }));
   }));
   

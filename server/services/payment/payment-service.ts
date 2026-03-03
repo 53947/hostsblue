@@ -109,4 +109,4 @@ export function getProviderByName(name: PaymentProviderName): PaymentProvider {
   return factory();
 }
 
-export { PaymentProvider } from './payment-provider.js';
+export type { PaymentProvider } from './payment-provider.js';
