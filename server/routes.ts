@@ -481,24 +481,40 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
   // Search domain availability
   app.get('/api/v1/domains/search', asyncHandler(async (req, res) => {
     const { domain } = domainSearchSchema.parse(req.query);
-    
-    // Get pricing for suggestions
-    const tlds = await db.query.tldPricing.findMany({
-      where: and(
-        eq(schema.tldPricing.isActive, true),
-        inArray(schema.tldPricing.tld, ['.com', '.net', '.org', '.io', '.co'])
-      ),
-    });
-    
+
+    // Default TLD pricing fallback
+    const DEFAULT_TLD_PRICING: Record<string, number> = {
+      '.com': 1299, '.net': 1499, '.org': 1299, '.io': 3999, '.co': 2999,
+    };
+    const SEARCH_TLDS = ['.com', '.net', '.org', '.io', '.co'];
+
+    // Get pricing from DB (or use fallback)
+    let tldPricing: Record<string, number> = {};
+    try {
+      const tlds = await db.query.tldPricing.findMany({
+        where: and(
+          eq(schema.tldPricing.isActive, true),
+          inArray(schema.tldPricing.tld, SEARCH_TLDS)
+        ),
+      });
+      if (tlds.length > 0) {
+        tlds.forEach(t => { tldPricing[t.tld] = t.registrationPrice; });
+      } else {
+        tldPricing = DEFAULT_TLD_PRICING;
+      }
+    } catch {
+      tldPricing = DEFAULT_TLD_PRICING;
+    }
+
     // Check availability with OpenSRS
-    const results = await openSRS.checkAvailability(domain, tlds.map(t => t.tld));
-    
+    const results = await openSRS.checkAvailability(domain, Object.keys(tldPricing));
+
     res.json(successResponse({
       query: domain,
       results: results.map((r: any) => ({
         domain: r.domain,
         available: r.available,
-        price: r.available ? tlds.find(t => t.tld === r.tld)?.registrationPrice : null,
+        price: r.available ? (tldPricing[r.tld] || null) : null,
         tld: r.tld,
       })),
     }));
