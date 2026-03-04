@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { domainApi } from '@/lib/api';
 import { Search, Loader2, Check, X, Globe, ShoppingCart, Shield, ArrowRight, CheckCircle, Lock } from 'lucide-react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import { MetaTags } from '@/components/seo/meta-tags';
 import type { CartItem } from '@/hooks/use-cart';
 
@@ -15,8 +15,18 @@ interface CartContext {
 }
 
 export function DomainSearchPage() {
-  const [query, setQuery] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || searchParams.get('domain') || '';
+  const [query, setQuery] = useState(initialQuery);
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
+
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('domain') || '';
+    if (q && q !== searchTerm) {
+      setQuery(q);
+      setSearchTerm(q);
+    }
+  }, [searchParams]);
   const cart = useOutletContext<CartContext>();
 
   const { data: searchResults, isLoading } = useQuery({

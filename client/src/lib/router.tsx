@@ -70,6 +70,7 @@ export const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'auth/magic-link', element: <MagicLinkPage /> },
       { path: 'domains/search', element: <DomainSearchPage /> },
+      { path: 'domains/transfer', element: <DomainSearchPage /> },
       { path: 'hosting', element: <HostingPlansPage /> },
       { path: 'email', element: <EmailPlansPage /> },
       { path: 'website-builder', element: <PublicWebsiteBuilderPage /> },
