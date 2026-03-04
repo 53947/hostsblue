@@ -9,7 +9,6 @@ import {
   Lock,
   RefreshCw,
   Shield,
-  Plus,
   Trash2,
   Edit2,
   X,
@@ -19,6 +18,26 @@ import {
 
 const DNS_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'] as const;
 
+const DNS_TYPE_HELP: Record<string, string> = {
+  A: 'Points domain to an IPv4 address',
+  AAAA: 'Points domain to an IPv6 address',
+  CNAME: 'Alias to another domain name',
+  MX: 'Mail server for receiving email',
+  TXT: 'Text record (SPF, DKIM, verification)',
+  NS: 'Delegates a subdomain to other nameservers',
+  SRV: 'Service location record',
+};
+
+const DNS_CONTENT_PLACEHOLDER: Record<string, string> = {
+  A: '192.168.1.1',
+  AAAA: '2001:db8::1',
+  CNAME: 'example.com',
+  MX: 'mail.example.com',
+  TXT: 'v=spf1 include:...',
+  NS: 'ns1.example.com',
+  SRV: '0 5 5060 sipserver.example.com',
+};
+
 interface DnsRecord {
   id: number;
   type: string;
@@ -26,6 +45,9 @@ interface DnsRecord {
   content: string;
   ttl: number;
   priority: number | null;
+  syncedToOpensrs?: boolean;
+  syncError?: string;
+  lastSyncAt?: string;
 }
 
 export function DomainDetailPage() {
@@ -33,8 +55,8 @@ export function DomainDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [showAddDns, setShowAddDns] = useState(false);
   const [editingRecord, setEditingRecord] = useState<number | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState<number | null>(null);
   const [dnsForm, setDnsForm] = useState({ type: 'A', name: '', content: '', ttl: 3600, priority: 0 });
   const [editForm, setEditForm] = useState({ content: '', ttl: 3600, priority: 0 });
 
@@ -65,7 +87,6 @@ export function DomainDetailPage() {
       domainApi.createDnsRecord(uuid!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['domain', uuid, 'dns'] });
-      setShowAddDns(false);
       setDnsForm({ type: 'A', name: '', content: '', ttl: 3600, priority: 0 });
     },
   });
@@ -83,6 +104,7 @@ export function DomainDetailPage() {
     mutationFn: (recordId: string) => domainApi.deleteDnsRecord(uuid!, recordId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['domain', uuid, 'dns'] });
+      setDeletingRecord(null);
     },
   });
 
@@ -117,6 +139,7 @@ export function DomainDetailPage() {
 
   const startEdit = (record: DnsRecord) => {
     setEditingRecord(record.id);
+    setDeletingRecord(null);
     setEditForm({ content: record.content, ttl: record.ttl, priority: record.priority || 0 });
   };
 
@@ -330,106 +353,89 @@ export function DomainDetailPage() {
       <div className="bg-white border border-gray-200 rounded-[7px] p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">DNS Records</h2>
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => syncDns.mutate()}
+            disabled={syncDns.isPending}
+            className="btn-outline text-sm flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncDns.isPending ? 'animate-spin' : ''}`} />
+            Sync
+          </button>
+        </div>
+
+        {/* Always-visible Add DNS form */}
+        <form onSubmit={handleAddDns} className="bg-[#f8fafb] border border-gray-200 rounded-[7px] p-4 mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Add DNS Record</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+              <select
+                value={dnsForm.type}
+                onChange={(e) => setDnsForm({ ...dnsForm, type: e.target.value })}
+                className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
+              >
+                {DNS_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 italic mt-1">{DNS_TYPE_HELP[dnsForm.type]}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+              <input
+                type="text"
+                value={dnsForm.name}
+                onChange={(e) => setDnsForm({ ...dnsForm, name: e.target.value })}
+                placeholder="@ or subdomain"
+                className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Content</label>
+              <input
+                type="text"
+                value={dnsForm.content}
+                onChange={(e) => setDnsForm({ ...dnsForm, content: e.target.value })}
+                placeholder={DNS_CONTENT_PLACEHOLDER[dnsForm.type] || 'Value'}
+                required
+                className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">TTL</label>
+              <input
+                type="number"
+                value={dnsForm.ttl}
+                onChange={(e) => setDnsForm({ ...dnsForm, ttl: parseInt(e.target.value) || 3600 })}
+                className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
+              />
+            </div>
+            {(dnsForm.type === 'MX' || dnsForm.type === 'SRV') && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Priority</label>
+                <input
+                  type="number"
+                  value={dnsForm.priority}
+                  onChange={(e) => setDnsForm({ ...dnsForm, priority: parseInt(e.target.value) || 0 })}
+                  className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-3">
             <button
-              onClick={() => syncDns.mutate()}
-              disabled={syncDns.isPending}
-              className="btn-outline text-sm flex items-center gap-2"
+              type="submit"
+              disabled={createDns.isPending}
+              className="bg-[#064A6C] hover:bg-[#053A55] text-white text-sm font-medium px-4 py-2 rounded-[7px] flex items-center gap-2 transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${syncDns.isPending ? 'animate-spin' : ''}`} />
-              Sync
-            </button>
-            <button
-              onClick={() => setShowAddDns(true)}
-              className="bg-[#064A6C] hover:bg-[#053A55] text-white text-sm font-medium px-4 py-2 rounded-[7px] flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
+              {createDns.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Add Record
             </button>
           </div>
-        </div>
-
-        {/* Add DNS form */}
-        {showAddDns && (
-          <form onSubmit={handleAddDns} className="bg-gray-50 border border-gray-200 rounded-[7px] p-4 mb-4">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
-                <select
-                  value={dnsForm.type}
-                  onChange={(e) => setDnsForm({ ...dnsForm, type: e.target.value })}
-                  className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
-                >
-                  {DNS_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={dnsForm.name}
-                  onChange={(e) => setDnsForm({ ...dnsForm, name: e.target.value })}
-                  placeholder="@ or subdomain"
-                  className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Content</label>
-                <input
-                  type="text"
-                  value={dnsForm.content}
-                  onChange={(e) => setDnsForm({ ...dnsForm, content: e.target.value })}
-                  placeholder="Value"
-                  required
-                  className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">TTL</label>
-                <input
-                  type="number"
-                  value={dnsForm.ttl}
-                  onChange={(e) => setDnsForm({ ...dnsForm, ttl: parseInt(e.target.value) || 3600 })}
-                  className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
-                />
-              </div>
-              {(dnsForm.type === 'MX' || dnsForm.type === 'SRV') && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Priority</label>
-                  <input
-                    type="number"
-                    value={dnsForm.priority}
-                    onChange={(e) => setDnsForm({ ...dnsForm, priority: parseInt(e.target.value) || 0 })}
-                    className="w-full border border-gray-200 rounded-[7px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#064A6C]"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-3">
-              <button
-                type="submit"
-                disabled={createDns.isPending}
-                className="bg-[#064A6C] hover:bg-[#053A55] text-white text-sm font-medium px-4 py-2 rounded-[7px] flex items-center gap-2 transition-colors disabled:opacity-50"
-              >
-                {createDns.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Add Record
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddDns(false)}
-                className="btn-outline text-sm flex items-center gap-2"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-            {createDns.isError && (
-              <p className="text-red-500 text-sm mt-2">Failed to create record. Check your inputs.</p>
-            )}
-          </form>
-        )}
+          {createDns.isError && (
+            <p className="text-red-500 text-sm mt-2">Failed to create record. Check your inputs.</p>
+          )}
+        </form>
 
         {/* DNS Records Table */}
         {dnsLoading ? (
@@ -446,6 +452,7 @@ export function DomainDetailPage() {
                   <th className="pb-3 font-medium">Content</th>
                   <th className="pb-3 font-medium">TTL</th>
                   <th className="pb-3 font-medium">Priority</th>
+                  <th className="pb-3 font-medium">Status</th>
                   <th className="pb-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -488,6 +495,9 @@ export function DomainDetailPage() {
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
+                        <td className="py-3">
+                          <SyncStatusDot record={record} />
+                        </td>
                         <td className="py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
@@ -517,22 +527,47 @@ export function DomainDetailPage() {
                         <td className="py-3 font-mono text-gray-900 max-w-xs truncate">{record.content}</td>
                         <td className="py-3 text-gray-500">{record.ttl}</td>
                         <td className="py-3 text-gray-500">{record.priority ?? '—'}</td>
+                        <td className="py-3">
+                          <SyncStatusDot record={record} />
+                        </td>
                         <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => startEdit(record)}
-                              className="p-1.5 text-gray-400 hover:text-[#064A6C] hover:bg-gray-100 rounded transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => deleteDns.mutate(String(record.id))}
-                              disabled={deleteDns.isPending}
-                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                          {deletingRecord === record.id ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => {
+                                  deleteDns.mutate(String(record.id));
+                                }}
+                                disabled={deleteDns.isPending}
+                                className="text-xs text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-[7px] transition-colors disabled:opacity-50"
+                              >
+                                {deleteDns.isPending ? 'Deleting...' : 'Delete'}
+                              </button>
+                              <button
+                                onClick={() => setDeletingRecord(null)}
+                                className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-[7px] border border-gray-200 hover:border-gray-300 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => startEdit(record)}
+                                className="p-1.5 text-gray-400 hover:text-[#064A6C] hover:bg-gray-100 rounded transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeletingRecord(record.id);
+                                  setEditingRecord(null);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </>
                     )}
@@ -544,16 +579,35 @@ export function DomainDetailPage() {
         ) : (
           <div className="text-center py-12">
             <Globe className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-2">No DNS records yet</p>
-            <button
-              onClick={() => setShowAddDns(true)}
-              className="text-[#064A6C] text-sm hover:text-[#053A55]"
-            >
-              Add your first record
-            </button>
+            <p className="text-gray-500">No DNS records yet. Use the form above to add your first record.</p>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function SyncStatusDot({ record }: { record: DnsRecord }) {
+  if (record.syncError) {
+    return (
+      <span className="inline-flex items-center text-xs text-red-600" title={record.syncError}>
+        <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1.5" />
+        Error
+      </span>
+    );
+  }
+  if (record.syncedToOpensrs) {
+    return (
+      <span className="inline-flex items-center text-xs text-green-600">
+        <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1.5" />
+        Synced
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center text-xs text-yellow-600">
+      <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block mr-1.5" />
+      Pending
+    </span>
   );
 }
