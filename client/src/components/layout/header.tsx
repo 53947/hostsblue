@@ -120,7 +120,7 @@ export function Header({ cartItemCount = 0, onCartClick }: HeaderProps = {}) {
                 <div className="grid grid-cols-3">
                   <div className="pr-6 border-r border-[#E5E7EB]/60">
                     <h3 className="text-base font-bold text-[#064A6C] mb-3">Register New</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); const input = e.currentTarget.querySelector('input'); const q = input?.value.trim(); if (q) window.location.href = `/domains/search?q=${encodeURIComponent(q)}`; }} className="flex gap-2 mb-3">
+                    <form onSubmit={(e) => { e.preventDefault(); const input = e.currentTarget.querySelector('input'); const q = input?.value.trim(); if (q) { setActiveMenu(null); window.location.href = `/domains/search?q=${encodeURIComponent(q)}`; } }} className="flex gap-2 mb-3">
                       <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input type="text" placeholder="Find your dream domain" className="w-full pl-9 pr-3 py-2 text-sm border border-[#E5E7EB] rounded-[7px] focus:outline-none focus:border-[#064A6C]" />

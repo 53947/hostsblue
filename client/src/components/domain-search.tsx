@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const tlds = [
   { ext: '.com', price: '$12.99' },
@@ -17,6 +17,7 @@ interface DomainSearchProps {
 }
 
 export function DomainSearch({ variant = 'hero' }: DomainSearchProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('register');
   const [query, setQuery] = useState('');
 
@@ -64,7 +65,7 @@ export function DomainSearch({ variant = 'hero' }: DomainSearchProps) {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (query.trim()) window.location.href = `/domains/search?q=${encodeURIComponent(query.trim())}`;
+                if (query.trim()) navigate(`/domains/search?q=${encodeURIComponent(query.trim())}`);
               }}
               className="flex gap-2"
             >
@@ -99,7 +100,7 @@ export function DomainSearch({ variant = 'hero' }: DomainSearchProps) {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (query.trim()) window.location.href = `/domains/transfer?domain=${encodeURIComponent(query.trim())}`;
+                if (query.trim()) navigate(`/domains/transfer?domain=${encodeURIComponent(query.trim())}`);
               }}
               className="flex gap-2"
             >
@@ -131,7 +132,7 @@ export function DomainSearch({ variant = 'hero' }: DomainSearchProps) {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (query.trim()) window.location.href = '/dashboard/domains';
+                if (query.trim()) navigate('/dashboard/domains');
               }}
               className="flex gap-2"
             >
