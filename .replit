@@ -24,7 +24,7 @@ enabled = true
 [deployment]
 run = "npx tsx server/index.ts"
 build = "npm run client:build"
-publicDir = "dist"
+publicDir = "dist/client"
 
 [userenv]
 
