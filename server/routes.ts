@@ -2293,26 +2293,27 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
 
   // Get SiteLock plans
   app.get('/api/v1/sitelock/plans', asyncHandler(async (_req, res) => {
+    // SiteLock pricing: 40% margin over wholesale ($85/$130/$190)
     const plans = [
       {
         slug: 'basic',
         name: 'SiteLock Basic',
-        monthlyPrice: 1999,
-        yearlyPrice: 19990,
+        monthlyPrice: 1158,
+        yearlyPrice: 13900,
         features: ['Daily malware scan', 'Trust seal', 'Up to 5 pages'],
       },
       {
-        slug: 'professional',
-        name: 'SiteLock Professional',
-        monthlyPrice: 3999,
-        yearlyPrice: 39990,
+        slug: 'pro',
+        name: 'SiteLock Pro',
+        monthlyPrice: 1825,
+        yearlyPrice: 21900,
         features: ['Daily malware scan', 'Automatic malware removal', 'Trust seal', 'WAF protection', 'Up to 500 pages'],
       },
       {
-        slug: 'enterprise',
-        name: 'SiteLock Enterprise',
-        monthlyPrice: 7999,
-        yearlyPrice: 79990,
+        slug: 'business',
+        name: 'SiteLock Business',
+        monthlyPrice: 2658,
+        yearlyPrice: 31900,
         features: ['Continuous malware scan', 'Automatic malware removal', 'Trust seal', 'WAF protection', 'DDoS protection', 'Unlimited pages'],
       },
     ];

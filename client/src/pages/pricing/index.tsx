@@ -182,7 +182,7 @@ export function PricingPage() {
             </div>
             <h2 className="text-2xl font-[800] text-gray-900 mb-2">Security</h2>
             <p className="text-gray-500 mb-3">SSL certificates and SiteLock protection to keep your site and visitors safe.</p>
-            <p className="text-sm text-[#4B5563] font-medium mb-4">SSL from <span className="text-[#10B981]">FREE</span> &middot; SiteLock from <span className="text-[#064A6C]">$9.99/mo</span></p>
+            <p className="text-sm text-[#4B5563] font-medium mb-4">SSL from <span className="text-[#10B981]">FREE</span> &middot; SiteLock from <span className="text-[#064A6C]">$139/yr</span></p>
             <Link to="/security" className="text-[#064A6C] font-medium text-sm btn-arrow-hover">
               View Security Options
             </Link>
@@ -206,9 +206,9 @@ export function PricingPage() {
             <p className="text-sm font-[800] text-gray-900 mb-3">SiteLock Security</p>
             <div className="grid sm:grid-cols-3 gap-4">
               {[
-                { name: 'Basic', price: '$9.99/mo', desc: 'Daily scans, trust seal' },
-                { name: 'Professional', price: '$24.99/mo', desc: 'Auto removal, WAF, CDN', popular: true },
-                { name: 'Enterprise', price: '$49.99/mo', desc: 'Full protection, PCI' },
+                { name: 'Basic', price: '$139/yr', desc: 'Daily scans, trust seal' },
+                { name: 'Pro', price: '$219/yr', desc: 'Auto removal, WAF, CDN', popular: true },
+                { name: 'Business', price: '$319/yr', desc: 'Full protection, PCI' },
               ].map((plan) => (
                 <div key={plan.name} className={`bg-white border rounded-[7px] p-4 ${plan.popular ? 'border-[#064A6C] shadow-sm' : 'border-[#E5E7EB]'}`}>
                   <div className="flex items-center justify-between mb-1">

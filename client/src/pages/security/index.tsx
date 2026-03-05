@@ -78,7 +78,7 @@ const sslCerts = [
 const sitelockPlans = [
   {
     name: 'Basic',
-    monthly: 9.99,
+    yearly: 139,
     features: [
       'Daily Malware Scanning',
       'Vulnerability Detection',
@@ -89,8 +89,8 @@ const sitelockPlans = [
     popular: false,
   },
   {
-    name: 'Professional',
-    monthly: 24.99,
+    name: 'Pro',
+    yearly: 219,
     features: [
       'Daily Malware Scanning',
       'Automatic Malware Removal',
@@ -103,8 +103,8 @@ const sitelockPlans = [
     popular: true,
   },
   {
-    name: 'Enterprise',
-    monthly: 49.99,
+    name: 'Business',
+    yearly: 319,
     features: [
       'Continuous Malware Scanning',
       'Automatic Malware Removal',
@@ -176,9 +176,9 @@ export function SecurityPage() {
     cart.addItem({
       type: 'sitelock',
       name: `SiteLock ${plan.name}`,
-      description: `SiteLock ${plan.name} — $${plan.monthly.toFixed(2)}/mo`,
-      price: Math.round(plan.monthly * 100),
-      termMonths: 1,
+      description: `SiteLock ${plan.name} — $${plan.yearly}/yr`,
+      price: plan.yearly * 100,
+      termMonths: 12,
       configuration: { planSlug: plan.name.toLowerCase() },
     });
     cart.openCart();
@@ -308,8 +308,8 @@ export function SecurityPage() {
 
               <div className="text-center mb-6">
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-4xl font-[800] text-gray-900">${plan.monthly.toFixed(2)}</span>
-                  <span className="text-gray-500">/mo</span>
+                  <span className="text-4xl font-[800] text-gray-900">${plan.yearly}</span>
+                  <span className="text-gray-500">/yr</span>
                 </div>
               </div>
 
