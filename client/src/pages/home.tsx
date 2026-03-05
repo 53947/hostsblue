@@ -261,7 +261,7 @@ export function HomePage() {
       {/* ============================================================ */}
       {/* SECTION 4 — HOSTING PLANS PREVIEW                            */}
       {/* ============================================================ */}
-      <section className="bg-[#F9FAFB] py-20">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Section>
             <div className="text-center mb-14">
@@ -402,7 +402,7 @@ export function HomePage() {
       {/* ============================================================ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <Section>
-          <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-[7px] px-8 py-14 text-center">
+          <div className="bg-white border border-[#E5E7EB] rounded-[7px] px-8 py-14 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#4B5563] mb-3">PART OF THE <Brandsignature brand="triadblue" showTld={false} size={12} /> ECOSYSTEM</p>
             <div className="mb-10">
               <Brandsignature brand="triadblue" showTld={true} size={20} />

@@ -124,7 +124,7 @@ export function AboutPage() {
 
       {/* CTA */}
       <section className="py-12 text-center">
-        <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-[7px] p-12">
+        <div className="bg-white border border-[#E5E7EB] rounded-[7px] p-12">
           <h2 className="text-2xl font-[800] text-gray-900 mb-4">Ready to Get Started?</h2>
           <p className="text-[#4B5563] mb-8 max-w-lg mx-auto">
             Join thousands of businesses that trust hostsblue for their web presence. Create your account and start building today.

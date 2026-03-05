@@ -233,7 +233,7 @@ export function EmailPlansPage() {
       {/* Email Migration */}
       <hr className="section-divider" />
 
-      <section className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-[7px] p-8 md:p-12 text-center">
+      <section className="bg-white border border-[#E5E7EB] rounded-[7px] p-8 md:p-12 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="w-12 h-12 rounded-[7px] bg-[#064A6C]/10 flex items-center justify-center mx-auto mb-6">
             <ArrowRight className="w-6 h-6 text-[#064A6C]" />

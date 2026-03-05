@@ -166,7 +166,7 @@ export function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 py-12">
+    <div className="min-h-[calc(100vh-4rem)] py-12">
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Checkout</h1>
@@ -221,7 +221,7 @@ export function CheckoutPage() {
             {/* Payment Method */}
             <div className="bg-white border border-gray-200 rounded-[7px] p-6 mt-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Method</h2>
-              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-[7px] border border-gray-200">
+              <div className="flex items-center gap-4 p-4 bg-white rounded-[7px] border border-gray-200">
                 <div className="w-12 h-8 bg-[#064A6C] rounded flex items-center justify-center">
                   <span className="text-white font-bold text-xs">SB</span>
                 </div>

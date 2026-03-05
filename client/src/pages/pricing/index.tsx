@@ -273,7 +273,7 @@ export function PricingPage() {
       <hr className="section-divider" />
 
       <section className="py-4">
-        <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-[7px] p-12 text-center">
+        <div className="bg-white border border-[#E5E7EB] rounded-[7px] p-12 text-center">
           <h2 className="text-3xl font-[800] text-gray-900 mb-4">Bundle & Save</h2>
           <p className="text-[#4B5563] max-w-2xl mx-auto mb-8">
             Combine domains, hosting, email, and security for a complete web presence. Create an account to build your custom bundle and save.
