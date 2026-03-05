@@ -700,25 +700,33 @@ export class OpenSRSIntegration {
         const sld = domain.split('.')[0] || '';
         const tld = '.' + (domain.split('.').slice(1).join('.') || 'com');
 
-        // Deterministic availability rules for realistic mock results
+        // Deterministic mock availability
+        // Use character sum for a simple, stable hash
         let available = true;
-        const sldHash = sld.split('').reduce((h: number, c: string) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-        const tldHash = tld.split('').reduce((h: number, c: string) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-        const combined = Math.abs(sldHash ^ tldHash);
+        const charSum = sld.split('').reduce((s: number, c: string) => s + c.charCodeAt(0), 0);
+        const tldCharSum = tld.split('').reduce((s: number, c: string) => s + c.charCodeAt(0), 0);
+        const mix = (charSum * 7 + tldCharSum * 13) % 100;
+
+        // Always-taken TLDs for common words
+        const TAKEN_TLDS = new Set(['.com', '.net', '.org']);
 
         if (sld.startsWith('taken')) {
           available = false;
-        } else if (sld.startsWith('test')) {
-          available = true;
+        } else if (sld.startsWith('test') || sld.startsWith('my')) {
+          // Test/my domains: almost everything available except .com
+          available = tld !== '.com' || sld.length > 10;
         } else if (COMMON_COM_WORDS.has(sld)) {
-          // Common words: .com always taken, others ~60% taken
-          available = tld === '.com' ? false : (combined % 5) > 2;
-        } else if (tld === '.com' || tld === '.net' || tld === '.org') {
-          // Popular TLDs: ~40% chance taken for non-common words
-          available = (combined % 5) > 1;
+          // Common words: popular TLDs taken, ~70% of others available
+          available = !TAKEN_TLDS.has(tld) && mix > 30;
         } else {
-          // Niche TLDs: ~85% available
-          available = (combined % 7) > 0;
+          // Normal words: .com taken ~50%, .net/.org ~30%, everything else ~90% available
+          if (tld === '.com') {
+            available = mix > 50;
+          } else if (TAKEN_TLDS.has(tld)) {
+            available = mix > 30;
+          } else {
+            available = mix > 10;
+          }
         }
 
         return {

@@ -238,23 +238,14 @@ export function DomainSearchPage() {
             </div>
           )}
 
-          {/* Taken — collapsed summary */}
+          {/* Taken — just a count */}
           {unavailableAlts.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Not Available ({unavailableAlts.length})
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {unavailableAlts.map((result: any) => (
-                  <span
-                    key={result.domain}
-                    className="text-xs text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-[7px]"
-                  >
-                    {result.domain}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              {availableAlts.length === 0
+                ? `We checked ${allResults.length} extensions — none are currently available. Try a different name.`
+                : `${unavailableAlts.length} other extension${unavailableAlts.length !== 1 ? 's' : ''} checked — not available`
+              }
+            </p>
           )}
         </div>
       )}
