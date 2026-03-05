@@ -3,7 +3,7 @@ import { Brandsignature } from '@/components/ui/brandsignature';
 
 export function Footer() {
   return (
-    <footer className="bg-[#F9FAFB] border-t border-[#E5E7EB]">
+    <footer className="bg-white border-t border-[#E5E7EB]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand */}
@@ -63,7 +63,7 @@ export function Footer() {
               <li><Brandsignature brand="swipesblue" size={14} /></li>
               <li><Brandsignature brand="businessblueprint" size={14} /></li>
               <li><Brandsignature brand="scansblue" size={14} /></li>
-              <li><Brandsignature brand="triadblue" size={14} /></li>
+              <li style={{ paddingLeft: `${14 * 1.15 + 14 * 0.3}px` }}><Brandsignature brand="triadblue" size={14} /></li>
             </ul>
           </div>
         </div>

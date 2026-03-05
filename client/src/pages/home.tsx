@@ -72,8 +72,6 @@ const trustSignals = [
   { icon: Clock, title: 'Instant Activation', desc: 'Domains and hosting activated instantly after purchase.' },
 ];
 
-const ecosystemBrandKeys = ['hostsblue', 'swipesblue', 'businessblueprint', 'scansblue', 'triadblue'] as const;
-
 /* ------------------------------------------------------------------ */
 /*  How It Works — animated milestones                                 */
 /* ------------------------------------------------------------------ */
@@ -395,36 +393,6 @@ export function HomePage() {
         </Section>
       </section>
 
-      <hr className="section-divider" />
-
-      {/* ============================================================ */}
-      {/* SECTION 7 — ECOSYSTEM BANNER                                 */}
-      {/* ============================================================ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <Section>
-          <div className="bg-white border border-[#E5E7EB] rounded-[7px] px-8 py-14 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#4B5563] mb-3">PART OF THE <Brandsignature brand="triadblue" showTld={false} size={12} /> ECOSYSTEM</p>
-            <div className="mb-10">
-              <Brandsignature brand="triadblue" showTld={true} size={20} />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-8 mb-10">
-              {ecosystemBrandKeys.map((key) => (
-                <Brandsignature key={key} brand={key} size={16} />
-              ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register" className="bg-[#064A6C] hover:bg-[#053A55] text-white font-semibold px-8 py-3 rounded-[7px] transition-all btn-arrow-hover justify-center">
-                Create Account
-              </Link>
-              <Link to="/domains/search" className="border border-gray-300 text-gray-700 font-semibold px-8 py-3 rounded-[7px] hover:border-[#064A6C] hover:text-[#064A6C] transition-colors">
-                Search Domains
-              </Link>
-            </div>
-          </div>
-        </Section>
-      </section>
     </div>
   );
 }
