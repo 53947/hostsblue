@@ -54,6 +54,9 @@ interface BrandsignatureProps {
 function BrandText({ brand, showTld, size }: { brand: keyof typeof brandData; showTld: boolean; size: number }) {
   const d = brandData[brand];
   const logoSize = size * 1.15;
+  const logoBoxWidth = size * 1.6;
+  const logoGap = size * 0.3;
+  const middleGap = size * 0.2;
   const isTriadblue = brand === 'triadblue';
   const firstFont = "'Archivo Semi Expanded', sans-serif";
   const secondFont = "'Archivo Narrow', sans-serif";
@@ -62,28 +65,28 @@ function BrandText({ brand, showTld, size }: { brand: keyof typeof brandData; sh
   const renderFirstWord = (color: string) => {
     if (isTriadblue) {
       return (
-        <span style={{ fontFamily: firstFont, fontWeight: 700, color, fontSize: size }}>
+        <span style={{ fontFamily: firstFont, fontWeight: 800, color, fontSize: size }}>
           <span style={{ fontSize: size * 1.25 }}>T</span>RIAD
         </span>
       );
     }
-    return <span style={{ fontFamily: firstFont, fontWeight: 700, color, fontSize: size }}>{d.first}</span>;
+    return <span style={{ fontFamily: firstFont, fontWeight: 800, color, fontSize: size }}>{d.first}</span>;
   };
 
   const renderSecondWord = (color: string) => {
     if (isTriadblue) {
       return (
-        <span style={{ fontFamily: secondFont, fontWeight: 700, color, fontSize: size }}>
+        <span style={{ fontFamily: secondFont, fontWeight: 800, color, fontSize: size }}>
           <span style={{ fontSize: size * 1.25 }}>B</span>LUE
         </span>
       );
     }
-    return <span style={{ fontFamily: secondFont, fontWeight: 700, color, fontSize: size }}>{d.second}</span>;
+    return <span style={{ fontFamily: secondFont, fontWeight: 800, color, fontSize: size }}>{d.second}</span>;
   };
 
   const renderTld = (color: string) => {
     if (!showTld) return null;
-    return <span style={{ fontFamily: secondFont, fontWeight: 700, color, fontSize: size }}>{d.tld}</span>;
+    return <span style={{ fontFamily: secondFont, fontWeight: 800, color, fontSize: size }}>{d.tld}</span>;
   };
 
   const renderLogo = () => (
@@ -93,6 +96,35 @@ function BrandText({ brand, showTld, size }: { brand: keyof typeof brandData; sh
       style={{ height: logoSize, width: 'auto', filter: whiteGlow }}
       className="inline-block"
     />
+  );
+
+  const renderLogoBox = (visible: boolean) => (
+    <span style={{
+      width: logoBoxWidth,
+      marginRight: logoGap,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      opacity: visible ? 1 : 0,
+    }}>
+      {visible ? renderLogo() : (
+        <img src={d.icon} alt="" style={{ height: logoSize, width: 'auto' }} className="inline-block" />
+      )}
+    </span>
+  );
+
+  const renderMiddleLogo = (visible: boolean) => (
+    <span style={{
+      margin: `0 ${middleGap}px`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      opacity: visible ? 1 : 0,
+    }}>
+      {visible ? renderLogo() : (
+        <img src={d.icon} alt="" style={{ height: logoSize, width: 'auto' }} className="inline-block" />
+      )}
+    </span>
   );
 
   return (
@@ -110,17 +142,9 @@ function BrandText({ brand, showTld, size }: { brand: keyof typeof brandData; sh
           pointerEvents: 'none',
         }}
       >
-        {d.logoPosition === 'left' && (
-          <span style={{ marginRight: size * 0.45, display: 'inline-flex', alignItems: 'center', opacity: 0 }}>
-            <img src={d.icon} alt="" style={{ height: logoSize, width: 'auto' }} className="inline-block" />
-          </span>
-        )}
+        {d.logoPosition === 'left' && renderLogoBox(false)}
         {renderFirstWord('#09080E')}
-        {d.logoPosition === 'middle' && (
-          <span style={{ margin: `0 ${size * 0.25}px`, display: 'inline-flex', alignItems: 'center', opacity: 0 }}>
-            <img src={d.icon} alt="" style={{ height: logoSize, width: 'auto' }} className="inline-block" />
-          </span>
-        )}
+        {d.logoPosition === 'middle' && renderMiddleLogo(false)}
         {renderSecondWord('#09080E')}
         {renderTld('#09080E')}
       </span>
@@ -134,17 +158,9 @@ function BrandText({ brand, showTld, size }: { brand: keyof typeof brandData; sh
           textShadow: '0px -100px 100px rgba(255, 255, 255, 1)',
         }}
       >
-        {d.logoPosition === 'left' && (
-          <span style={{ marginRight: size * 0.45, display: 'inline-flex', alignItems: 'center' }}>
-            {renderLogo()}
-          </span>
-        )}
+        {d.logoPosition === 'left' && renderLogoBox(true)}
         {renderFirstWord(d.firstColor)}
-        {d.logoPosition === 'middle' && (
-          <span style={{ margin: `0 ${size * 0.25}px`, display: 'inline-flex', alignItems: 'center' }}>
-            {renderLogo()}
-          </span>
-        )}
+        {d.logoPosition === 'middle' && renderMiddleLogo(true)}
         {renderSecondWord(d.secondColor)}
         {renderTld(d.tldColor)}
       </span>

@@ -63,7 +63,7 @@ export function Footer() {
               <li><Brandsignature brand="swipesblue" size={14} /></li>
               <li><Brandsignature brand="businessblueprint" size={14} /></li>
               <li><Brandsignature brand="scansblue" size={14} /></li>
-              <li style={{ paddingLeft: `${14 * 1.15 + 14 * 0.45}px` }}><Brandsignature brand="triadblue" size={14} /></li>
+              <li style={{ paddingLeft: `${14 * 1.6 + 14 * 0.3}px` }}><Brandsignature brand="triadblue" size={14} /></li>
             </ul>
           </div>
         </div>
