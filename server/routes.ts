@@ -482,33 +482,39 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
   app.get('/api/v1/domains/search', asyncHandler(async (req, res) => {
     const { domain } = domainSearchSchema.parse(req.query);
 
-    // Comprehensive TLD catalog with pricing (cents)
+    // Comprehensive TLD catalog with pricing (cents) — realistic market rates
     const TLD_CATALOG: Record<string, number> = {
-      // Popular
-      '.com': 1299, '.net': 1499, '.org': 1299, '.io': 3999, '.co': 2999,
+      // Popular (tier 1)
+      '.com': 1299, '.net': 1399, '.org': 1299, '.io': 3999, '.co': 2999,
       // Tech
-      '.dev': 1699, '.app': 1699, '.ai': 4999, '.tech': 999, '.cloud': 1299,
-      '.digital': 999, '.code': 2999, '.software': 2999,
+      '.dev': 1699, '.app': 1799, '.ai': 4999, '.tech': 1299, '.cloud': 2199,
+      '.digital': 1499, '.code': 3499, '.software': 3299,
       // Business
-      '.biz': 1499, '.company': 999, '.agency': 999, '.solutions': 999,
-      '.services': 999, '.consulting': 2999, '.group': 1499, '.inc': 2999,
-      '.llc': 2999, '.ventures': 2999, '.enterprises': 2999,
+      '.biz': 1799, '.company': 1299, '.agency': 2499, '.solutions': 2299,
+      '.services': 2299, '.consulting': 3499, '.group': 1999, '.inc': 3999,
+      '.llc': 3499, '.ventures': 3299, '.enterprises': 3299,
       // Creative
-      '.design': 2999, '.studio': 1999, '.media': 1999, '.art': 999,
-      '.photography': 1999, '.video': 1999,
+      '.design': 3499, '.studio': 2799, '.media': 2499, '.art': 1499,
+      '.photography': 2699, '.video': 2499,
       // Commerce
-      '.shop': 999, '.store': 999, '.market': 2999, '.sale': 999,
-      '.deals': 999, '.buy': 2999,
+      '.shop': 1499, '.store': 1699, '.market': 3299, '.sale': 1999,
+      '.deals': 1799, '.buy': 3499,
       // Web
-      '.site': 999, '.website': 999, '.online': 999, '.web': 999,
-      '.page': 1299, '.blog': 999, '.info': 999,
+      '.site': 1299, '.website': 1499, '.online': 1599, '.web': 1299,
+      '.page': 1399, '.blog': 1499, '.info': 1199,
       // Location
-      '.us': 999, '.uk': 999, '.ca': 1499, '.eu': 999, '.de': 999,
+      '.us': 1199, '.uk': 1099, '.ca': 1599, '.eu': 1299, '.de': 1199,
       // Other popular
-      '.xyz': 999, '.me': 999, '.tv': 2999, '.cc': 999, '.pro': 999,
-      '.live': 999, '.world': 999, '.space': 999, '.life': 999,
-      '.today': 999, '.zone': 1999, '.one': 999,
+      '.xyz': 1299, '.me': 1199, '.tv': 3499, '.cc': 1299, '.pro': 1299,
+      '.live': 1699, '.world': 1999, '.space': 1299, '.life': 1799,
+      '.today': 1499, '.zone': 2199, '.one': 1199,
     };
+
+    // Priority order: popular TLDs shown first regardless of price
+    const TLD_PRIORITY: string[] = [
+      '.com', '.net', '.org', '.io', '.co', '.dev', '.app', '.ai',
+      '.tech', '.cloud', '.me', '.xyz', '.pro', '.info', '.biz',
+    ];
 
     // Try DB pricing first, fall back to catalog
     let tldPricing: Record<string, number> = {};
@@ -531,7 +537,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
     // Check availability with OpenSRS for all TLDs
     const results = await openSRS.checkAvailability(domain, Object.keys(tldPricing));
 
-    // Sort: exact match first, then available (cheapest first), then unavailable
+    // Sort: exact match first, then available (popular TLDs first, then by price), then unavailable
     const searchedTld = '.' + (domain.split('.').slice(1).join('.') || 'com');
     const sorted = results.sort((a: any, b: any) => {
       // Exact searched TLD always first
@@ -540,8 +546,15 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
       // Available before unavailable
       if (a.available && !b.available) return -1;
       if (!a.available && b.available) return 1;
-      // Cheaper first among available
+      // Among available: popular TLDs first, then by price
       if (a.available && b.available) {
+        const aPri = TLD_PRIORITY.indexOf(a.tld);
+        const bPri = TLD_PRIORITY.indexOf(b.tld);
+        const aIsPriority = aPri !== -1;
+        const bIsPriority = bPri !== -1;
+        if (aIsPriority && !bIsPriority) return -1;
+        if (!aIsPriority && bIsPriority) return 1;
+        if (aIsPriority && bIsPriority) return aPri - bPri;
         return (tldPricing[a.tld] || 9999) - (tldPricing[b.tld] || 9999);
       }
       return 0;
