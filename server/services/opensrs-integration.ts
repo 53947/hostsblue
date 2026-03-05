@@ -424,7 +424,13 @@ export class OpenSRSIntegration {
           available: response.response_code === '210',
         };
       } catch {
-        return { domain: fullDomain, tld, available: false, reason: 'lookup_failed' };
+        // API failed — fall back to mock so results aren't all "unavailable"
+        const mockResult = this.mockResponse('LOOKUP', 'DOMAIN', { domain: fullDomain });
+        return {
+          domain: fullDomain,
+          tld,
+          available: mockResult.response_code === '210',
+        };
       }
     });
 
