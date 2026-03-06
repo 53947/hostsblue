@@ -5,7 +5,7 @@ const brandData = {
     first: 'hosts', firstColor: '#008060',
     second: 'blue', secondColor: '#0000FF',
     tld: '.com', tldColor: '#008060',
-    icon: '/hostsblue_logo_image.png',
+    icon: '/HostsBlue_Logo_Image.png',
     href: 'https://hostsblue.com',
     logoPosition: 'left' as const,
   },
