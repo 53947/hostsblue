@@ -26,6 +26,19 @@ export function registerPanelRoutes(app: any, db: DB) {
   const router = Router();
 
   // ========================================================================
+  // PAYMENT MODE
+  // ========================================================================
+
+  router.get('/payment-mode', asyncHandler(async (_req, res) => {
+    const liveMode = process.env.SWIPESBLUE_LIVE_MODE === 'true';
+    const hasApiKey = !!process.env.SWIPESBLUE_API_KEY
+      && process.env.SWIPESBLUE_API_KEY !== 'test'
+      && process.env.SWIPESBLUE_API_KEY !== 'your_swipesblue_api_key';
+    const mode = liveMode && hasApiKey ? 'live' : 'mock';
+    res.json(successResponse({ mode }));
+  }));
+
+  // ========================================================================
   // STATS & OVERVIEW
   // ========================================================================
 

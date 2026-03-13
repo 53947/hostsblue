@@ -31,6 +31,11 @@ export function PanelOverviewPage() {
     queryFn: () => panelApi.getStats(),
   });
 
+  const { data: paymentMode } = useQuery({
+    queryKey: ['panel', 'payment-mode'],
+    queryFn: () => panelApi.getPaymentMode(),
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -108,9 +113,27 @@ export function PanelOverviewPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#09080E]">Overview</h1>
-        <p className="text-[#4B5563]">Welcome to the hostsblue admin panel</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#09080E]">Overview</h1>
+          <p className="text-[#4B5563]">Welcome to the hostsblue admin panel</p>
+        </div>
+        {paymentMode && (
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] text-xs font-semibold ${
+              paymentMode.mode === 'live'
+                ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20'
+                : 'bg-[#F59E0B]/10 text-[#D97706] border border-[#F59E0B]/20'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                paymentMode.mode === 'live' ? 'bg-[#10B981]' : 'bg-[#F59E0B]'
+              }`}
+            />
+            Payments: {paymentMode.mode === 'live' ? 'LIVE' : 'MOCK'}
+          </span>
+        )}
       </div>
 
       {/* Stat Cards */}

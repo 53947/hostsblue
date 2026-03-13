@@ -445,6 +445,9 @@ export const panelApi = {
   updateTemplate: (slug: string, data: any) =>
     fetchPanel<any>(`/settings/templates/${slug}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Payment mode
+  getPaymentMode: () => fetchPanel<{ mode: 'live' | 'mock' }>('/payment-mode'),
+
   // Search
   search: (q: string) => fetchPanel<any>(`/search?q=${encodeURIComponent(q)}`),
 

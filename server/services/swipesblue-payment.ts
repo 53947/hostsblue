@@ -8,6 +8,7 @@ import crypto from 'crypto';
 const SWIPESBLUE_API_URL = process.env.SWIPESBLUE_API_URL || 'https://api.swipesblue.com/v1';
 const SWIPESBLUE_API_KEY = process.env.SWIPESBLUE_API_KEY || '';
 const SWIPESBLUE_WEBHOOK_SECRET = process.env.SWIPESBLUE_WEBHOOK_SECRET || '';
+const SWIPESBLUE_LIVE_MODE = process.env.SWIPESBLUE_LIVE_MODE === 'true';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
@@ -57,11 +58,25 @@ export class SwipesBluePayment {
     this.apiKey = SWIPESBLUE_API_KEY;
     this.webhookSecret = SWIPESBLUE_WEBHOOK_SECRET;
 
-    this.isMockMode = !this.apiKey || this.apiKey === 'test' || this.apiKey === 'your_swipesblue_api_key';
+    // Explicit live mode toggle takes priority; fall back to implicit detection
+    if (SWIPESBLUE_LIVE_MODE && this.apiKey && this.apiKey !== 'test' && this.apiKey !== 'your_swipesblue_api_key') {
+      this.isMockMode = false;
+    } else {
+      this.isMockMode = !this.apiKey || this.apiKey === 'test' || this.apiKey === 'your_swipesblue_api_key' || !SWIPESBLUE_LIVE_MODE;
+    }
 
     if (this.isMockMode) {
-      console.warn('SwipesBlue API key not configured - using mock mode');
+      console.warn('[SwipesBlue] Running in MOCK mode — set SWIPESBLUE_LIVE_MODE=true with a valid API key for live payments');
+    } else {
+      console.log('[SwipesBlue] Running in LIVE mode — real payments will be processed');
     }
+  }
+
+  /**
+   * Returns whether the service is running in mock mode
+   */
+  getMode(): 'live' | 'mock' {
+    return this.isMockMode ? 'mock' : 'live';
   }
 
   /**
