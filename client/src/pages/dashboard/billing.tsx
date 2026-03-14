@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { orderApi, dashboardApi, aiCreditsApi, aiSettingsApi } from '@/lib/api';
+import { orderApi, dashboardApi, aiCreditsApi, aiSettingsApi, billingApi } from '@/lib/api';
 import {
   CreditCard, Loader2, Receipt, DollarSign, TrendingUp, Plus,
   BarChart3, Zap, AlertTriangle, X, ArrowRight, Clock, RefreshCw,
+  CalendarDays, RotateCcw, XCircle, CheckCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -11,6 +12,40 @@ export function BillingPage() {
   const queryClient = useQueryClient();
   const [showAddCredits, setShowAddCredits] = useState(false);
   const [txPage, setTxPage] = useState(0);
+  const [showCancelConfirm, setShowCancelConfirm] = useState<number | null>(null);
+  const [billingHistoryPage, setBillingHistoryPage] = useState(0);
+
+  const { data: subscriptions } = useQuery({
+    queryKey: ['billing-subscriptions'],
+    queryFn: billingApi.getSubscriptions,
+  });
+
+  const { data: billingHistory } = useQuery({
+    queryKey: ['billing-history', billingHistoryPage],
+    queryFn: () => billingApi.getHistory(10, billingHistoryPage * 10),
+  });
+
+  const { data: upcoming } = useQuery({
+    queryKey: ['billing-upcoming'],
+    queryFn: billingApi.getUpcoming,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (subId: number) => billingApi.cancel(subId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-upcoming'] });
+      setShowCancelConfirm(null);
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (subId: number) => billingApi.reactivate(subId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-upcoming'] });
+    },
+  });
 
   const { data: balance, isLoading: balanceLoading } = useQuery({
     queryKey: ['ai-credits-balance'],
@@ -55,15 +90,207 @@ export function BillingPage() {
     );
   }
 
+  const activeSubs = (subscriptions || []) as any[];
+  const historyItems = ((billingHistory as any)?.history || []) as any[];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-          <p className="text-gray-500">AI credits, usage analytics, and payment history</p>
+          <p className="text-gray-500">Subscriptions, AI credits, and payment history</p>
         </div>
       </div>
+
+      {/* Subscriptions Section */}
+      {activeSubs.length > 0 && (
+        <div className="space-y-4">
+          {activeSubs.map((sub: any) => (
+            <div key={sub.id} className="bg-white border border-gray-200 rounded-[7px] p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className="text-lg font-semibold text-[#09080E]">{sub.planName}</h3>
+                    <SubscriptionStatusBadge status={sub.status} cancelAtPeriodEnd={sub.cancelAtPeriodEnd} />
+                  </div>
+                  <p className="text-sm text-[#4B5563]">
+                    {sub.planType.charAt(0).toUpperCase() + sub.planType.slice(1)} plan
+                    &middot; ${(sub.amount / 100).toFixed(2)}/{sub.billingInterval === 'yearly' ? 'yr' : 'mo'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {sub.status === 'suspended' && (
+                    <button
+                      onClick={() => reactivateMutation.mutate(sub.id)}
+                      disabled={reactivateMutation.isPending}
+                      className="bg-[#064A6C] hover:bg-[#053C58] text-white text-sm font-medium px-4 py-2 rounded-[7px] transition-colors flex items-center gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Reactivate
+                    </button>
+                  )}
+                  {(sub.status === 'active' && !sub.cancelAtPeriodEnd) && (
+                    <button
+                      onClick={() => setShowCancelConfirm(sub.id)}
+                      className="border border-gray-200 hover:bg-gray-50 text-[#4B5563] text-sm font-medium px-4 py-2 rounded-[7px] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {sub.cancelAtPeriodEnd && sub.status === 'active' && (
+                    <button
+                      onClick={() => reactivateMutation.mutate(sub.id)}
+                      disabled={reactivateMutation.isPending}
+                      className="bg-[#064A6C] hover:bg-[#053C58] text-white text-sm font-medium px-4 py-2 rounded-[7px] transition-colors flex items-center gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Keep Subscription
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
+                <div>
+                  <p className="text-xs text-[#4B5563] mb-0.5">Next charge</p>
+                  <p className="text-sm font-medium text-[#09080E]">
+                    {sub.cancelAtPeriodEnd
+                      ? 'No renewal'
+                      : new Date(sub.currentPeriodEnd).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#4B5563] mb-0.5">Amount</p>
+                  <p className="text-sm font-medium text-[#09080E]">
+                    ${(sub.amount / 100).toFixed(2)} {sub.currency.toUpperCase()}
+                  </p>
+                </div>
+                {sub.paymentMethodBrand && (
+                  <div>
+                    <p className="text-xs text-[#4B5563] mb-0.5">Payment method</p>
+                    <p className="text-sm font-medium text-[#09080E]">
+                      {sub.paymentMethodBrand} ending {sub.paymentMethodLast4}
+                    </p>
+                  </div>
+                )}
+                {sub.paymentMethodExpiry && (
+                  <div>
+                    <p className="text-xs text-[#4B5563] mb-0.5">Card expiry</p>
+                    <p className="text-sm font-medium text-[#09080E]">{sub.paymentMethodExpiry}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm !== null && (() => {
+        const sub = activeSubs.find((s: any) => s.id === showCancelConfirm);
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-[7px] max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#09080E]">Cancel Subscription</h3>
+              </div>
+              <p className="text-sm text-[#4B5563] mb-2">
+                Are you sure you want to cancel your <strong>{sub?.planName}</strong> subscription?
+              </p>
+              <p className="text-sm text-[#4B5563] mb-6">
+                You will continue to have access until <strong>{sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : ''}</strong>.
+                After that, your subscription will not renew.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowCancelConfirm(null)}
+                  className="border border-gray-200 hover:bg-gray-50 text-[#09080E] text-sm font-medium px-4 py-2 rounded-[7px] transition-colors"
+                >
+                  Keep Subscription
+                </button>
+                <button
+                  onClick={() => cancelMutation.mutate(showCancelConfirm)}
+                  disabled={cancelMutation.isPending}
+                  className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-[7px] transition-colors"
+                >
+                  {cancelMutation.isPending ? 'Cancelling...' : 'Confirm Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Billing History */}
+      {historyItems.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-[7px] p-6">
+          <h3 className="text-lg font-semibold text-[#09080E] mb-4 flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-[#064A6C]" />
+            Billing History
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm text-[#4B5563] border-b border-gray-100">
+                  <th className="pb-3 font-medium">Date</th>
+                  <th className="pb-3 font-medium">Description</th>
+                  <th className="pb-3 font-medium">Amount</th>
+                  <th className="pb-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyItems.map((item: any) => (
+                  <tr key={item.id} className="border-b border-gray-50">
+                    <td className="py-3 text-sm text-[#09080E]">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 text-sm text-[#09080E]">{item.planName} renewal</td>
+                    <td className="py-3 text-sm font-medium text-[#09080E]">
+                      ${(item.amount / 100).toFixed(2)}
+                    </td>
+                    <td className="py-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        item.status === 'paid' ? 'bg-[#10B981]/10 text-[#10B981]' :
+                        item.status === 'failed' ? 'bg-red-100 text-red-700' :
+                        item.status === 'void' ? 'bg-gray-100 text-gray-600' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {historyItems.length >= 10 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <button
+                onClick={() => setBillingHistoryPage(Math.max(0, billingHistoryPage - 1))}
+                disabled={billingHistoryPage === 0}
+                className="text-sm text-[#064A6C] hover:text-[#053C58] disabled:text-gray-300 font-medium"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setBillingHistoryPage(billingHistoryPage + 1)}
+                className="text-sm text-[#064A6C] hover:text-[#053C58] font-medium"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Divider between subscriptions and AI credits */}
+      {activeSubs.length > 0 && (
+        <div className="section-divider" style={{ borderTop: '1px solid #E5E7EB', opacity: 0.6, margin: '48px 0' }} />
+      )}
 
       {/* Section 1: Balance Card */}
       <BalanceCard balance={balance} onAddCredits={() => setShowAddCredits(true)} />
@@ -113,6 +340,40 @@ export function BillingPage() {
         />
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// SUBSCRIPTION STATUS BADGE
+// ============================================================================
+
+function SubscriptionStatusBadge({ status, cancelAtPeriodEnd }: { status: string; cancelAtPeriodEnd: boolean }) {
+  if (cancelAtPeriodEnd && status === 'active') {
+    return (
+      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+        Cancelling
+      </span>
+    );
+  }
+
+  const styles: Record<string, string> = {
+    active: 'bg-[#10B981]/10 text-[#10B981]',
+    past_due: 'bg-yellow-100 text-yellow-700',
+    suspended: 'bg-red-100 text-red-700',
+    cancelled: 'bg-gray-100 text-gray-600',
+  };
+
+  const labels: Record<string, string> = {
+    active: 'Active',
+    past_due: 'Past Due',
+    suspended: 'Suspended',
+    cancelled: 'Cancelled',
+  };
+
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
+      {labels[status] || status}
+    </span>
   );
 }
 

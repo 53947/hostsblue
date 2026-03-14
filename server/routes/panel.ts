@@ -868,6 +868,184 @@ export function registerPanelRoutes(app: any, db: DB) {
     res.json(successResponse(updated));
   }));
 
+  // ========================================================================
+  // SUBSCRIPTIONS
+  // ========================================================================
+
+  router.get('/subscriptions', asyncHandler(async (req, res) => {
+    const { search, status, page = '1', limit = '20' } = req.query as Record<string, string>;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    const conditions: any[] = [];
+    if (status && status !== 'all') {
+      conditions.push(eq(schema.subscriptions.status, status as any));
+    }
+
+    let query = db.select({
+      id: schema.subscriptions.id,
+      planType: schema.subscriptions.planType,
+      planName: schema.subscriptions.planName,
+      status: schema.subscriptions.status,
+      billingInterval: schema.subscriptions.billingInterval,
+      amount: schema.subscriptions.amount,
+      currency: schema.subscriptions.currency,
+      currentPeriodStart: schema.subscriptions.currentPeriodStart,
+      currentPeriodEnd: schema.subscriptions.currentPeriodEnd,
+      cancelAtPeriodEnd: schema.subscriptions.cancelAtPeriodEnd,
+      createdAt: schema.subscriptions.createdAt,
+      customerName: sql<string>`CONCAT(${schema.customers.firstName}, ' ', ${schema.customers.lastName})`,
+      customerEmail: schema.customers.email,
+      customerId: schema.subscriptions.customerId,
+    }).from(schema.subscriptions)
+      .leftJoin(schema.customers, eq(schema.subscriptions.customerId, schema.customers.id))
+      .$dynamic();
+
+    if (search) {
+      conditions.push(or(
+        like(schema.customers.email, `%${search}%`),
+        like(schema.customers.firstName, `%${search}%`),
+        like(schema.customers.lastName, `%${search}%`),
+        like(schema.subscriptions.planName, `%${search}%`),
+      ));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const subscriptionsList = await (query as any)
+      .orderBy(desc(schema.subscriptions.createdAt))
+      .limit(Number(limit))
+      .offset(offset);
+
+    const [totalResult] = await db.select({ count: count() }).from(schema.subscriptions);
+
+    res.json(successResponse({
+      subscriptions: subscriptionsList,
+      total: totalResult.count,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(Number(totalResult.count) / Number(limit)),
+    }));
+  }));
+
+  router.get('/subscriptions/summary', asyncHandler(async (req, res) => {
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const [activeResult] = await db.select({
+      count: count(),
+      totalAmount: sql<number>`COALESCE(SUM(${schema.subscriptions.amount}), 0)`,
+    }).from(schema.subscriptions).where(eq(schema.subscriptions.status, 'active'));
+
+    const [pastDueResult] = await db.select({ count: count() }).from(schema.subscriptions).where(eq(schema.subscriptions.status, 'past_due'));
+
+    const [churnedResult] = await db.select({ count: count() }).from(schema.subscriptions).where(and(
+      eq(schema.subscriptions.status, 'cancelled'),
+      gte(schema.subscriptions.cancelledAt, firstOfMonth),
+    ));
+
+    const [upcomingResult] = await db.select({ count: count() }).from(schema.subscriptions).where(and(
+      eq(schema.subscriptions.status, 'active'),
+      lte(schema.subscriptions.currentPeriodEnd, sevenDaysFromNow),
+    ));
+
+    res.json(successResponse({
+      mrr: Number(activeResult.totalAmount),
+      activeCount: Number(activeResult.count),
+      pastDueCount: Number(pastDueResult.count),
+      churnedThisMonth: Number(churnedResult.count),
+      upcomingRenewals: Number(upcomingResult.count),
+    }));
+  }));
+
+  router.post('/subscriptions/:id/suspend', asyncHandler(async (req, res) => {
+    const now = new Date();
+    await db.update(schema.subscriptions).set({
+      status: 'suspended',
+      suspendedAt: now,
+      updatedAt: now,
+    }).where(eq(schema.subscriptions.id, Number(req.params.id)));
+
+    await db.insert(schema.billingEvents).values({
+      subscriptionId: Number(req.params.id),
+      eventType: 'status_changed',
+      newStatus: 'suspended',
+      metadata: { reason: 'admin_action' },
+    });
+
+    res.json(successResponse(null, 'Subscription suspended'));
+  }));
+
+  router.post('/subscriptions/:id/reactivate', asyncHandler(async (req, res) => {
+    const sub = await db.query.subscriptions.findFirst({
+      where: eq(schema.subscriptions.id, Number(req.params.id)),
+    });
+    if (!sub) return res.status(404).json(errorResponse('Subscription not found'));
+
+    const now = new Date();
+    const interval = sub.billingInterval as 'monthly' | 'yearly';
+    const newEnd = new Date(now);
+    if (interval === 'yearly') {
+      newEnd.setFullYear(newEnd.getFullYear() + 1);
+    } else {
+      newEnd.setMonth(newEnd.getMonth() + 1);
+    }
+
+    await db.update(schema.subscriptions).set({
+      status: 'active',
+      currentPeriodStart: now,
+      currentPeriodEnd: newEnd,
+      suspendedAt: null,
+      cancelAtPeriodEnd: false,
+      updatedAt: now,
+    }).where(eq(schema.subscriptions.id, Number(req.params.id)));
+
+    await db.insert(schema.billingEvents).values({
+      subscriptionId: Number(req.params.id),
+      eventType: 'status_changed',
+      previousStatus: sub.status,
+      newStatus: 'active',
+      metadata: { reason: 'admin_reactivation' },
+    });
+
+    res.json(successResponse(null, 'Subscription reactivated'));
+  }));
+
+  router.post('/subscriptions/:id/cancel', asyncHandler(async (req, res) => {
+    const now = new Date();
+    await db.update(schema.subscriptions).set({
+      status: 'cancelled',
+      cancelledAt: now,
+      updatedAt: now,
+    }).where(eq(schema.subscriptions.id, Number(req.params.id)));
+
+    await db.insert(schema.billingEvents).values({
+      subscriptionId: Number(req.params.id),
+      eventType: 'subscription_cancelled',
+      newStatus: 'cancelled',
+      metadata: { reason: 'admin_action' },
+    });
+
+    res.json(successResponse(null, 'Subscription cancelled'));
+  }));
+
+  router.get('/subscriptions/:id/history', asyncHandler(async (req, res) => {
+    const cycles = await db.select()
+      .from(schema.billingCycles)
+      .where(eq(schema.billingCycles.subscriptionId, Number(req.params.id)))
+      .orderBy(desc(schema.billingCycles.createdAt));
+
+    const events = await db.select()
+      .from(schema.billingEvents)
+      .where(eq(schema.billingEvents.subscriptionId, Number(req.params.id)))
+      .orderBy(desc(schema.billingEvents.createdAt))
+      .limit(50);
+
+    res.json(successResponse({ cycles, events }));
+  }));
+
   // Global search
   router.get('/search', asyncHandler(async (req, res) => {
     const { q } = req.query as Record<string, string>;

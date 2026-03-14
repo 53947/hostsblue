@@ -55,6 +55,7 @@ import { PanelSslPage } from '@/pages/panel/ssl';
 import { PanelBuilderPage } from '@/pages/panel/builder';
 import { PanelSupportPage } from '@/pages/panel/support';
 import { PanelRevenuePage } from '@/pages/panel/revenue';
+import { PanelSubscriptionsPage } from '@/pages/panel/subscriptions';
 import { PanelSettingsPage } from '@/pages/panel/settings';
 import { PanelCloudPage } from '@/pages/panel/cloud';
 import { PanelCustomerDetailPage } from '@/pages/panel/customer-detail';
@@ -144,6 +145,7 @@ export const router = createBrowserRouter([
       { path: 'ssl', element: <PanelSslPage /> },
       { path: 'builder', element: <PanelBuilderPage /> },
       { path: 'support', element: <PanelSupportPage /> },
+      { path: 'subscriptions', element: <PanelSubscriptionsPage /> },
       { path: 'revenue', element: <PanelRevenuePage /> },
       { path: 'settings', element: <PanelSettingsPage /> },
     ],

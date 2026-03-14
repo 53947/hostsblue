@@ -34,6 +34,8 @@ import { registerSupportRoutes } from './routes/support.js';
 import { registerWebhookRoutes } from './routes/webhooks.js';
 import { registerWidgetTokenRoutes } from './routes/widget-tokens.js';
 import { registerCoachGreenRoutes } from './routes/coachgreen.js';
+import { registerBillingRoutes } from './routes/billing.js';
+import { BillingEngine } from './services/billing-engine.js';
 
 export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schema>) {
   // Initialize services
@@ -50,6 +52,8 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
   const analyticsAggregation = new AnalyticsAggregation(db);
   const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
   const emailService = new EmailService();
+
+  const billingEngine = new BillingEngine(db as any, swipesblue, emailService);
 
   // Rate limiters
   const authLoginLimiter = rateLimiter({ windowMs: 60 * 1000, max: 10, message: 'Too many login attempts' });
@@ -96,6 +100,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
     analyticsAggregation,
     resend,
     emailService,
+    billingEngine,
     authLoginLimiter,
     authRegisterLimiter,
     generalLimiter,
@@ -119,6 +124,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
   registerWebhookRoutes(app, ctx);
   registerWidgetTokenRoutes(app, ctx);
   registerCoachGreenRoutes(app, ctx);
+  registerBillingRoutes(app, ctx);
 
   // Validation error handler
   app.use((err: any, req: Request, res: Response, next: any) => {

@@ -278,6 +278,17 @@ export const widgetTokenApi = {
   revoke: (id: number) => fetchApi<void>(`/widget-tokens/${id}`, { method: 'DELETE' }),
 };
 
+export const billingApi = {
+  getSubscriptions: () => fetchApi<any[]>('/v1/billing/subscription'),
+  getHistory: (limit = 20, offset = 0) =>
+    fetchApi<any>(`/v1/billing/history?limit=${limit}&offset=${offset}`),
+  cancel: (subscriptionId: number) =>
+    fetchApi<any>('/v1/billing/cancel', { method: 'POST', body: JSON.stringify({ subscriptionId }) }),
+  reactivate: (subscriptionId: number) =>
+    fetchApi<any>('/v1/billing/reactivate', { method: 'POST', body: JSON.stringify({ subscriptionId }) }),
+  getUpcoming: () => fetchApi<any>('/v1/billing/upcoming'),
+};
+
 export const coachGreenApi = {
   chat: (data: { message: string; context?: string; sessionId?: number }) =>
     fetchApi<any>('/coach-green/chat', { method: 'POST', body: JSON.stringify(data) }),
@@ -444,6 +455,25 @@ export const panelApi = {
     fetchPanel<any>(`/settings/${section}`, { method: 'PATCH', body: JSON.stringify(data) }),
   updateTemplate: (slug: string, data: any) =>
     fetchPanel<any>(`/settings/templates/${slug}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Subscriptions
+  getSubscriptions: (params?: { search?: string; status?: string; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set('search', params.search);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    return fetchPanel<any>(`/subscriptions?${qs.toString()}`);
+  },
+  getSubscriptionSummary: () => fetchPanel<any>('/subscriptions/summary'),
+  suspendSubscription: (id: number) =>
+    fetchPanel<any>(`/subscriptions/${id}/suspend`, { method: 'POST' }),
+  reactivateSubscription: (id: number) =>
+    fetchPanel<any>(`/subscriptions/${id}/reactivate`, { method: 'POST' }),
+  cancelSubscription: (id: number) =>
+    fetchPanel<any>(`/subscriptions/${id}/cancel`, { method: 'POST' }),
+  getSubscriptionHistory: (id: number) =>
+    fetchPanel<any>(`/subscriptions/${id}/history`),
 
   // Payment mode
   getPaymentMode: () => fetchPanel<{ mode: 'live' | 'mock' }>('/payment-mode'),

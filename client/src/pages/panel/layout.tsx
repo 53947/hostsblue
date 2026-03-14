@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Search,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
 const sidebarLinks = [
@@ -32,6 +33,7 @@ const sidebarLinks = [
   { to: '/panel/ssl', label: 'SSL Certificates', icon: ShieldCheck },
   { to: '/panel/builder', label: 'Website Builder', icon: Palette },
   { to: '/panel/support', label: 'Support Tickets', icon: Headphones },
+  { to: '/panel/subscriptions', label: 'Subscriptions', icon: RefreshCw },
   { to: '/panel/revenue', label: 'Revenue', icon: DollarSign },
   { to: '/panel/settings', label: 'Settings', icon: Settings },
 ];

@@ -13,6 +13,10 @@ import * as schema from '../shared/schema.js';
 import { registerRoutes } from './routes.js';
 import { registerWidgetRoutes } from './routes/widget.js';
 import { loadActiveProviderFromDB } from './services/payment/payment-service.js';
+import cron from 'node-cron';
+import { SwipesBluePayment } from './services/swipesblue-payment.js';
+import { EmailService } from './services/email-service.js';
+import { BillingEngine } from './services/billing-engine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -235,6 +239,15 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     success: false,
     error: message,
     ...(NODE_ENV !== 'production' && { stack: err.stack }),
+  });
+});
+
+// Daily billing cron — 2:00 AM UTC
+const billingEngine = new BillingEngine(db as any, new SwipesBluePayment(), new EmailService());
+cron.schedule('0 2 * * *', () => {
+  console.log('[Cron] Running daily billing cycle...');
+  billingEngine.runBillingCycle().catch((err) => {
+    console.error('[Cron] Billing cycle error:', err);
   });
 });
 

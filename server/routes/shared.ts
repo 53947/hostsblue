@@ -92,6 +92,7 @@ export interface RouteContext {
   analyticsAggregation: any;
   resend: any;
   emailService: any;
+  billingEngine: any;
   authLoginLimiter: any;
   authRegisterLimiter: any;
   generalLimiter: any;

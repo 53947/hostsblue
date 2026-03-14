@@ -1820,3 +1820,112 @@ export type NewWidgetToken = typeof widgetTokens.$inferInsert;
 // Coach Green session types
 export type CoachGreenSession = typeof coachGreenSessions.$inferSelect;
 export type NewCoachGreenSession = typeof coachGreenSessions.$inferInsert;
+
+// ============================================================================
+// RECURRING BILLING — SUBSCRIPTIONS
+// ============================================================================
+
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'active',
+  'past_due',
+  'suspended',
+  'cancelled',
+]);
+
+export const billingCycleStatusEnum = pgEnum('billing_cycle_status', [
+  'pending',
+  'paid',
+  'failed',
+  'void',
+]);
+
+export const billingIntervalEnum = pgEnum('billing_interval', [
+  'monthly',
+  'yearly',
+]);
+
+export const subscriptions = pgTable('subscriptions', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id).notNull(),
+  planType: varchar('plan_type', { length: 30 }).notNull(), // hosting, email, ssl, builder, cloud
+  planId: integer('plan_id'), // references relevant plan table
+  planName: varchar('plan_name', { length: 100 }).notNull(),
+  status: subscriptionStatusEnum('status').default('active').notNull(),
+  billingInterval: billingIntervalEnum('billing_interval').default('monthly').notNull(),
+  amount: integer('amount').notNull(), // in cents
+  currency: varchar('currency', { length: 3 }).default('usd').notNull(),
+  currentPeriodStart: timestamp('current_period_start').notNull(),
+  currentPeriodEnd: timestamp('current_period_end').notNull(),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false).notNull(),
+  cancelledAt: timestamp('cancelled_at'),
+  suspendedAt: timestamp('suspended_at'),
+  swipesblueSubscriptionId: varchar('swipesblue_subscription_id', { length: 255 }),
+  swipesblueCustomerId: varchar('swipesblue_customer_id', { length: 255 }),
+  paymentMethodBrand: varchar('payment_method_brand', { length: 20 }),
+  paymentMethodLast4: varchar('payment_method_last4', { length: 4 }),
+  paymentMethodExpiry: varchar('payment_method_expiry', { length: 7 }), // MM/YYYY
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [subscriptions.customerId],
+    references: [customers.id],
+  }),
+  billingCycles: many(billingCycles),
+  billingEvents: many(billingEvents),
+}));
+
+export const billingCycles = pgTable('billing_cycles', {
+  id: serial('id').primaryKey(),
+  subscriptionId: integer('subscription_id').references(() => subscriptions.id).notNull(),
+  amount: integer('amount').notNull(), // in cents
+  currency: varchar('currency', { length: 3 }).default('usd').notNull(),
+  status: billingCycleStatusEnum('status').default('pending').notNull(),
+  attemptCount: integer('attempt_count').default(0).notNull(),
+  nextAttemptAt: timestamp('next_attempt_at'),
+  paidAt: timestamp('paid_at'),
+  failedAt: timestamp('failed_at'),
+  swipesbluePaymentId: varchar('swipesblue_payment_id', { length: 255 }),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const billingCyclesRelations = relations(billingCycles, ({ one }) => ({
+  subscription: one(subscriptions, {
+    fields: [billingCycles.subscriptionId],
+    references: [subscriptions.id],
+  }),
+}));
+
+export const billingEvents = pgTable('billing_events', {
+  id: serial('id').primaryKey(),
+  subscriptionId: integer('subscription_id').references(() => subscriptions.id).notNull(),
+  billingCycleId: integer('billing_cycle_id').references(() => billingCycles.id),
+  eventType: varchar('event_type', { length: 50 }).notNull(), // charge_succeeded, charge_failed, status_changed, etc.
+  previousStatus: varchar('previous_status', { length: 20 }),
+  newStatus: varchar('new_status', { length: 20 }),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const billingEventsRelations = relations(billingEvents, ({ one }) => ({
+  subscription: one(subscriptions, {
+    fields: [billingEvents.subscriptionId],
+    references: [subscriptions.id],
+  }),
+  billingCycle: one(billingCycles, {
+    fields: [billingEvents.billingCycleId],
+    references: [billingCycles.id],
+  }),
+}));
+
+// Subscription types
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+export type BillingCycle = typeof billingCycles.$inferSelect;
+export type NewBillingCycle = typeof billingCycles.$inferInsert;
+export type BillingEvent = typeof billingEvents.$inferSelect;
+export type NewBillingEvent = typeof billingEvents.$inferInsert;
