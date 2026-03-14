@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Zap, Loader2, ArrowRight } from 'lucide-react';
 import { aiCreditsApi } from '@/lib/api';
+import { Brandsignature } from '@/components/ui/brandsignature';
 
 const CREDIT_AMOUNTS = [
   { cents: 500, label: '$5.00', desc: '~250 AI actions' },
@@ -86,8 +87,8 @@ export function AddCreditsModal({ onClose }: { onClose: () => void }) {
               </>
             )}
           </button>
-          <p className="text-[10px] text-gray-400 text-center mt-2">
-            Powered by swipesblue — secure payment
+          <p className="text-[10px] text-gray-400 text-center mt-2 flex items-center justify-center gap-1">
+            Powered by <Brandsignature brand="swipesblue" size={12} /> — secure payment
           </p>
         </div>
       </div>

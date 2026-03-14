@@ -159,10 +159,8 @@ export function PanelLoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-[#4B5563] text-sm mt-6">
-          <Link to="/" className="text-[#064A6C] hover:text-[#053C58] font-medium">
-            Back to hostsblue.com
-          </Link>
+        <p className="text-center text-[#4B5563] text-sm mt-6 flex items-center justify-center gap-1.5">
+          Back to <Brandsignature brand="hostsblue" size={14} linkTo="/" />
         </p>
       </div>
     </div>
