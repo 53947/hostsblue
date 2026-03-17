@@ -35,6 +35,7 @@ import { registerWebhookRoutes } from './routes/webhooks.js';
 import { registerWidgetTokenRoutes } from './routes/widget-tokens.js';
 import { registerCoachGreenRoutes } from './routes/coachgreen.js';
 import { registerBillingRoutes } from './routes/billing.js';
+import { registerKamateraPageRoutes } from './routes/kamatera-pages.js';
 import { BillingEngine } from './services/billing-engine.js';
 
 export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schema>) {
@@ -125,6 +126,7 @@ export function registerRoutes(app: Express, db: PostgresJsDatabase<typeof schem
   registerWidgetTokenRoutes(app, ctx);
   registerCoachGreenRoutes(app, ctx);
   registerBillingRoutes(app, ctx);
+  registerKamateraPageRoutes(app, ctx);
 
   // Validation error handler
   app.use((err: any, req: Request, res: Response, next: any) => {

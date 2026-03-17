@@ -44,6 +44,12 @@ import { MagicLinkPage } from '@/pages/auth/magic-link';
 import { GuestEditorPage } from '@/pages/try/editor';
 import { VpsHostingPage } from '@/pages/hosting/vps';
 
+// Kamatera External Pages
+import { BillingProfilePage } from '@/pages/billing/profile';
+import { SupportTicketsPage } from '@/pages/support/tickets';
+import { CreateTicketPage } from '@/pages/support/create-ticket';
+import { HelpCenterPage } from '@/pages/help/index';
+
 // Panel Pages (Admin)
 import { PanelLoginPage } from '@/pages/panel/login';
 import { PanelLayout } from '@/pages/panel/layout';
@@ -87,6 +93,11 @@ export const router = createBrowserRouter([
       { path: 'checkout', element: <CheckoutPage /> },
       { path: 'checkout/success', element: <CheckoutSuccessPage /> },
       { path: 'checkout/cancel', element: <CheckoutCancelPage /> },
+      // Kamatera External Pages
+      { path: 'billing/profile', element: <BillingProfilePage /> },
+      { path: 'support/tickets', element: <SupportTicketsPage /> },
+      { path: 'support/tickets/new', element: <CreateTicketPage /> },
+      { path: 'help', element: <HelpCenterPage /> },
     ],
   },
   {
