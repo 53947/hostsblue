@@ -9,30 +9,37 @@ export function createKamateraAuth(db: DB) {
     const encryptedData = req.query.data as string | undefined;
     const timestamp = new Date().toISOString();
 
-    if (!encryptedData) {
-      console.log(`[${timestamp}] Kamatera auth failed: no data parameter`);
-      return res.status(400).json({ success: false, error: 'Missing encrypted data parameter' });
+    try {
+      if (!encryptedData) {
+        console.log(`[${timestamp}] Kamatera auth failed: no data parameter`);
+        return res.status(400).json({ success: false, error: 'Missing encrypted data parameter' });
+      }
+
+      const email = decryptKamateraData(encryptedData);
+
+      if (!email) {
+        console.log(`[${timestamp}] Kamatera auth failed: decryption failed`);
+        return res.status(400).json({ success: false, error: 'Invalid or corrupted encrypted data' });
+      }
+
+      console.log(`[${timestamp}] Kamatera auth: decrypted email = ${email}`);
+
+      const customer = await db.query.customers.findFirst({
+        where: eq(schema.customers.email, email),
+      });
+
+      if (!customer) {
+        console.log(`[${timestamp}] Kamatera auth failed: customer not found for ${email}`);
+        return res.status(404).json({ success: false, error: `Customer not found for email: ${email}` });
+      }
+
+      console.log(`[${timestamp}] Kamatera auth success: ${email} (customer ${customer.id})`);
+
+      (req as any).kamateraUser = customer;
+      next();
+    } catch (err: any) {
+      console.error(`[${timestamp}] Kamatera auth error:`, err);
+      return res.status(500).json({ success: false, error: `Auth error: ${err.message}` });
     }
-
-    const email = decryptKamateraData(encryptedData);
-
-    if (!email) {
-      console.log(`[${timestamp}] Kamatera auth failed: decryption failed`);
-      return res.status(400).json({ success: false, error: 'Invalid or corrupted encrypted data' });
-    }
-
-    const customer = await db.query.customers.findFirst({
-      where: eq(schema.customers.email, email),
-    });
-
-    if (!customer) {
-      console.log(`[${timestamp}] Kamatera auth failed: customer not found for ${email}`);
-      return res.status(404).json({ success: false, error: 'Customer not found' });
-    }
-
-    console.log(`[${timestamp}] Kamatera auth success: ${email} (customer ${customer.id})`);
-
-    (req as any).kamateraUser = customer;
-    next();
   };
 }
