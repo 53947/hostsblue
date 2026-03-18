@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import { decryptKamateraData } from '../utils/kamatera-decrypt.js';
 import * as schema from '../../shared/schema.js';
@@ -47,16 +47,36 @@ export function createKamateraAuth(db: DB) {
 
       if (!customer) {
         // Auto-create customer record for Kamatera users
+        // Use raw SQL to avoid referencing columns that don't exist in production DB yet
         const randomPassword = crypto.randomBytes(32).toString('hex');
-        const passwordHash = await import('bcrypt').then(b => b.default.hash(randomPassword, 10));
+        const bcrypt = await import('bcrypt');
+        const passwordHash = await bcrypt.default.hash(randomPassword, 10);
 
-        const [created] = await db.insert(schema.customers).values({
-          email,
-          passwordHash,
-          isActive: true,
-        }).returning(CUSTOMER_COLUMNS);
+        const result = await db.execute(sql`
+          INSERT INTO customers (email, password_hash, is_active, is_admin, email_verified, created_at, updated_at)
+          VALUES (${email}, ${passwordHash}, true, false, false, NOW(), NOW())
+          RETURNING id, uuid, email, first_name, last_name, company_name, phone,
+                    address1, address2, city, state, postal_code, country_code, is_active
+        `);
 
-        customer = created;
+        const row = result.rows[0] as any;
+        customer = {
+          id: row.id,
+          uuid: row.uuid,
+          email: row.email,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          companyName: row.company_name,
+          phone: row.phone,
+          address1: row.address1,
+          address2: row.address2,
+          city: row.city,
+          state: row.state,
+          postalCode: row.postal_code,
+          countryCode: row.country_code,
+          isActive: row.is_active,
+        };
+
         console.log(`[${timestamp}] Kamatera auth: auto-created customer ${customer.id} for ${email}`);
       } else {
         console.log(`[${timestamp}] Kamatera auth success: ${email} (customer ${customer.id})`);
