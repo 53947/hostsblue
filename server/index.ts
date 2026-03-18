@@ -198,6 +198,62 @@ app.get('/test', (req, res) => {
   res.json({ message: 'Server is working', timestamp: new Date().toISOString() });
 });
 
+// One-time setup endpoint — run against production DB via the deployed app
+// DELETE THIS AFTER USE
+app.get('/api/v1/admin/setup-production', async (req, res) => {
+  const secret = req.query.secret;
+  if (secret !== 'hostsblue-setup-2026') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const results: string[] = [];
+
+  try {
+    // Step 1: Fix missing columns
+    const columns = [
+      { name: 'magic_link_token', sql: `ALTER TABLE customers ADD COLUMN IF NOT EXISTS magic_link_token VARCHAR(255)` },
+      { name: 'magic_link_expires_at', sql: `ALTER TABLE customers ADD COLUMN IF NOT EXISTS magic_link_expires_at TIMESTAMP` },
+    ];
+    for (const col of columns) {
+      try {
+        await pool.query(col.sql);
+        results.push(`Column ${col.name}: added`);
+      } catch (err: any) {
+        results.push(`Column ${col.name}: ${err.code === '42701' ? 'already exists' : err.message}`);
+      }
+    }
+
+    // Step 2: Create customer if not exists
+    const email = (req.query.email as string) || 'deanlaskowski@hostsblue.com';
+    const password = (req.query.password as string) || 'HostsBlue2026!';
+    const firstName = (req.query.first as string) || 'Dean';
+    const lastName = (req.query.last as string) || 'Laskowski';
+
+    const existing = await pool.query('SELECT id, email FROM customers WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      results.push(`Customer ${email}: already exists (id: ${existing.rows[0].id})`);
+    } else {
+      const bcrypt = await import('bcrypt');
+      const hash = await bcrypt.default.hash(password, 10);
+      const inserted = await pool.query(
+        `INSERT INTO customers (email, password_hash, first_name, last_name, is_active, is_admin, email_verified, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, true, false, true, NOW(), NOW()) RETURNING id, email`,
+        [email, hash, firstName, lastName]
+      );
+      results.push(`Customer ${email}: created (id: ${inserted.rows[0].id})`);
+    }
+
+    // Step 3: Show DATABASE_URL info (masked)
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET';
+    const masked = dbUrl.length > 20 ? dbUrl.substring(0, 25) + '...' : dbUrl;
+    results.push(`DATABASE_URL starts with: ${masked}`);
+
+    res.json({ success: true, results });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, results });
+  }
+});
+
 // Serve static files from public folder (fallback) or dist (built frontend)
 let distPath = path.resolve(process.cwd(), 'dist/client');
 if (!fs.existsSync(distPath)) {
