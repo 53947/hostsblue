@@ -98,7 +98,7 @@ export function registerAdminRoutes(app: Express, ctx: RouteContext) {
       activeProvider: getActiveProviderName(),
       stripeConfigured,
       providers: [
-        { name: 'swipesblue', label: 'swipesblue', available: true },
+        { name: 'swipesblue', label: 'swipesblue.com', available: true },
         { name: 'stripe', label: 'Stripe', available: stripeConfigured },
       ],
     }));
