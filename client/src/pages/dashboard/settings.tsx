@@ -372,9 +372,6 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* Widget Integration */}
-      <WidgetIntegrationSettings />
-
       {/* AI Provider Configuration */}
       <AIProviderSettings />
     </div>
