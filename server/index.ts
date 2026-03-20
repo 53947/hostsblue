@@ -246,6 +246,88 @@ app.get('/api/v1/admin/check-table', async (req, res) => {
   }
 });
 
+// Create missing tables — DELETE AFTER USE
+app.get('/api/v1/admin/sync-tables', async (req, res) => {
+  if (req.query.secret !== 'hostsblue-setup-2026') return res.status(403).json({ error: 'Forbidden' });
+  const results: string[] = [];
+  const tables = [
+    {
+      name: 'widget_tokens',
+      sql: `CREATE TABLE IF NOT EXISTS widget_tokens (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER NOT NULL REFERENCES customers(id),
+        token VARCHAR(64) NOT NULL UNIQUE,
+        label VARCHAR(255),
+        allowed_origins JSONB DEFAULT '[]',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        last_used_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMP
+      )`,
+    },
+    {
+      name: 'platform_settings',
+      sql: `CREATE TABLE IF NOT EXISTS platform_settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) NOT NULL UNIQUE,
+        value TEXT NOT NULL,
+        section VARCHAR(100) NOT NULL DEFAULT 'general',
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )`,
+    },
+    {
+      name: 'support_tickets',
+      sql: `CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        uuid UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+        customer_id INTEGER NOT NULL REFERENCES customers(id),
+        subject VARCHAR(255) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+        status VARCHAR(20) NOT NULL DEFAULT 'open',
+        assigned_to INTEGER REFERENCES customers(id),
+        closed_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )`,
+    },
+    {
+      name: 'ticket_messages',
+      sql: `CREATE TABLE IF NOT EXISTS ticket_messages (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES support_tickets(id),
+        sender_id INTEGER REFERENCES customers(id),
+        sender_type VARCHAR(20) NOT NULL DEFAULT 'customer',
+        body TEXT NOT NULL,
+        is_internal BOOLEAN NOT NULL DEFAULT false,
+        attachments JSONB DEFAULT '[]',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )`,
+    },
+  ];
+
+  for (const t of tables) {
+    try {
+      await pool.query(t.sql);
+      results.push(`${t.name}: created or already exists`);
+    } catch (err: any) {
+      results.push(`${t.name}: ERROR - ${err.message}`);
+    }
+  }
+
+  // Also check all expected tables
+  const expected = ['customers','domains','domain_contacts','tld_pricing','dns_records','hosting_plans','hosting_accounts','orders','order_items','payments','email_plans','email_accounts','ssl_certificates','sitelock_accounts','website_projects','website_pages','website_assets','website_ai_sessions','audit_logs','webhook_events','cart_sessions','builder_subscriptions','ai_credit_balances','ai_credit_transactions','widget_tokens','support_tickets','ticket_messages','platform_settings','cloud_servers','cloud_snapshots','custom_domains','store_products','store_categories','store_orders','store_order_items','store_settings','agency_clients','ai_usage_logs','ai_provider_settings','form_submissions','site_analytics','site_analytics_daily'];
+  const missing: string[] = [];
+  for (const name of expected) {
+    const r = await pool.query(`SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`, [name]);
+    if (!r.rows[0].exists) missing.push(name);
+  }
+  if (missing.length > 0) results.push(`Still missing tables: ${missing.join(', ')}`);
+  else results.push('All expected tables exist');
+
+  res.json({ success: true, results });
+});
+
 // Promote to admin — DELETE AFTER USE
 app.get('/api/v1/admin/make-admin', async (req, res) => {
   if (req.query.secret !== 'hostsblue-setup-2026') return res.status(403).json({ error: 'Forbidden' });
