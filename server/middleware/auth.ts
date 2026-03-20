@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 export interface JWTPayload {
   userId: number;
@@ -35,22 +36,25 @@ function evictOldest() {
   }
 }
 
-// Load keys from environment or files
+// Load RSA keys from environment, or generate a pair at startup
 let privateKey: string;
 let publicKey: string;
 
-try {
-  if (process.env.JWT_PRIVATE_KEY && process.env.JWT_PUBLIC_KEY) {
-    privateKey = process.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
-    publicKey = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
-  } else {
-    console.warn('JWT keys not configured, using development fallback');
-    privateKey = 'dev-private-key';
-    publicKey = 'dev-private-key';
-  }
-} catch (error) {
-  console.error('Failed to load JWT keys:', error);
-  throw new Error('JWT configuration error');
+if (process.env.JWT_PRIVATE_KEY && process.env.JWT_PUBLIC_KEY) {
+  privateKey = process.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
+  publicKey = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
+  console.log('[AUTH] Using RSA keys from environment');
+} else {
+  // Generate ephemeral RSA key pair — tokens won't survive restarts,
+  // but auth works correctly in both dev and production
+  const pair = crypto.generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  privateKey = pair.privateKey;
+  publicKey = pair.publicKey;
+  console.warn('[AUTH] JWT_PRIVATE_KEY / JWT_PUBLIC_KEY not set — generated ephemeral RSA keys. Tokens will not survive server restarts.');
 }
 
 /**
@@ -62,7 +66,7 @@ export function generateTokens(payload: Omit<JWTPayload, 'iat' | 'exp'>): {
   expiresIn: number;
 } {
   const accessToken = jwt.sign(payload, privateKey, {
-    algorithm: process.env.NODE_ENV === 'production' ? 'RS256' : 'HS256',
+    algorithm: 'RS256',
     expiresIn: '15m',
     issuer: process.env.JWT_ISSUER || 'hostsblue.com',
     audience: process.env.JWT_AUDIENCE || 'hostsblue.com',
@@ -72,7 +76,7 @@ export function generateTokens(payload: Omit<JWTPayload, 'iat' | 'exp'>): {
     { userId: payload.userId, type: 'refresh' },
     privateKey,
     {
-      algorithm: process.env.NODE_ENV === 'production' ? 'RS256' : 'HS256',
+      algorithm: 'RS256',
       expiresIn: '7d',
       issuer: process.env.JWT_ISSUER || 'hostsblue.com',
     }
@@ -91,7 +95,7 @@ export function generateTokens(payload: Omit<JWTPayload, 'iat' | 'exp'>): {
 export function verifyToken(token: string): JWTPayload {
   try {
     const decoded = jwt.verify(token, publicKey, {
-      algorithms: [process.env.NODE_ENV === 'production' ? 'RS256' : 'HS256'],
+      algorithms: ['RS256'],
       issuer: process.env.JWT_ISSUER || 'hostsblue.com',
       audience: process.env.JWT_AUDIENCE || 'hostsblue.com',
     }) as JWTPayload;
